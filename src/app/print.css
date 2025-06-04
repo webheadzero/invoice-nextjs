@@ -52,4 +52,76 @@
   .print-content tr:hover {
     background-color: #f9fafb !important;
   }
+
+  body {
+    background: white;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+
+  .bg-white {
+    background-color: white !important;
+  }
+
+  .text-gray-900 {
+    color: black !important;
+  }
+
+  .text-gray-500 {
+    color: #666 !important;
+  }
+
+  .bg-gray-50 {
+    background-color: #f9fafb !important;
+  }
+
+  .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+    border-color: #e5e7eb !important;
+  }
+
+  .border-gray-200 {
+    border-color: #e5e7eb !important;
+  }
+
+  .shadow {
+    box-shadow: none !important;
+  }
+
+  .rounded-lg {
+    border-radius: 0 !important;
+  }
+
+  /* Ensure table borders are visible */
+  table {
+    border-collapse: collapse !important;
+  }
+
+  th, td {
+    border: 1px solid #e5e7eb !important;
+  }
+
+  /* Ensure text is black and readable */
+  * {
+    color: black !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Ensure background colors are white */
+  * {
+    background-color: white !important;
+  }
+
+  /* Ensure links are black and not underlined */
+  a {
+    color: black !important;
+    text-decoration: none !important;
+  }
+
+  /* Ensure page breaks don't occur in the middle of elements */
+  table, tr, td, th {
+    page-break-inside: avoid;
+  }
 } 

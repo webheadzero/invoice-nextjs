@@ -16,8 +16,6 @@ interface Invoice {
     rate: number;
     amount: number;
   }[];
-  subtotal: number;
-  tax: number;
   total: number;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
   notes?: string;
@@ -41,8 +39,6 @@ export default function CreateInvoicePage() {
     dueDate: new Date().toISOString().split('T')[0],
     clientId: 0,
     items: [{ description: '', quantity: 1, rate: 0, amount: 0 }],
-    subtotal: 0,
-    tax: 0,
     total: 0,
     status: 'draft',
   });
@@ -76,14 +72,11 @@ export default function CreateInvoicePage() {
         ? Number(newItems[index].quantity) * Number(newItems[index].rate)
         : newItems[index].amount,
     };
-    const subtotal = newItems.reduce((sum, item) => sum + item.amount, 0);
-    const tax = subtotal * 0.11; // 11% tax
+    const total = newItems.reduce((sum, item) => sum + item.amount, 0);
     setFormData(prev => ({
       ...prev,
       items: newItems,
-      subtotal,
-      tax,
-      total: subtotal + tax,
+      total,
     }));
   };
 
@@ -104,9 +97,8 @@ export default function CreateInvoicePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Calculate totals
-    const subtotal = formData.items.reduce((sum, item) => sum + item.amount, 0);
-    const tax = subtotal * 0.11; // 11% tax
+    // Calculate total
+    const total = formData.items.reduce((sum, item) => sum + item.amount, 0);
     
     await db.addInvoice({
       number: formData.number,
@@ -119,9 +111,7 @@ export default function CreateInvoicePage() {
         rate: item.rate,
         amount: item.amount
       })),
-      subtotal,
-      tax,
-      total: subtotal + tax,
+      total,
       status: 'draft'
     });
     

@@ -25,58 +25,84 @@ interface Invoice {
     rate: number;
     amount: number;
   }[];
-  subtotal: number;
-  tax: number;
   total: number;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
   notes?: string;
 }
 
+interface Settings {
+  currency: string;
+}
+
 export default function NewInvoicePage() {
   const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
+  const [settings, setSettings] = useState<Settings | null>(null);
   const [formData, setFormData] = useState<Invoice>({
     number: '',
     date: new Date().toISOString().split('T')[0],
     dueDate: new Date().toISOString().split('T')[0],
     clientId: 0,
     items: [{ description: '', quantity: 1, rate: 0, amount: 0 }],
-    subtotal: 0,
-    tax: 0,
     total: 0,
-    status: 'draft',
+    status: 'draft' as const,
   });
 
   useEffect(() => {
-    const loadClients = async () => {
-      const data = await db.getClients();
-      setClients(data);
+    const loadData = async () => {
+      try {
+        console.log('Loading clients and settings...');
+        const [clientsData, settingsData] = await Promise.all([
+          db.getClients(),
+          db.getSettings()
+        ]);
+        console.log('Loaded clients:', clientsData);
+        console.log('Loaded settings:', settingsData);
+        setClients(clientsData);
+        setSettings(settingsData);
+
+        // Set default client if available
+        if (clientsData.length > 0) {
+          setFormData(prev => ({
+            ...prev,
+            clientId: clientsData[0].id || 0
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+      }
     };
-    loadClients();
+    loadData();
   }, []);
 
   useEffect(() => {
     const generateInvoiceNumber = async () => {
-      const invoices = await db.getInvoices();
-      const currentDate = new Date();
-      const year = currentDate.getFullYear();
-      const month = String(currentDate.getMonth() + 1).padStart(2, '0');
-      
-      // Filter invoices for current month and year
-      const currentMonthInvoices = invoices.filter(invoice => {
-        const invoiceDate = new Date(invoice.date);
-        return invoiceDate.getFullYear() === year && 
-               invoiceDate.getMonth() + 1 === currentDate.getMonth() + 1;
-      });
+      try {
+        console.log('Generating invoice number...');
+        const invoices = await db.getInvoices();
+        const currentDate = new Date();
+        const year = currentDate.getFullYear();
+        const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+        
+        // Filter invoices for current month and year
+        const currentMonthInvoices = invoices.filter(invoice => {
+          const invoiceDate = new Date(invoice.date);
+          return invoiceDate.getFullYear() === year && 
+                 invoiceDate.getMonth() + 1 === currentDate.getMonth() + 1;
+        });
 
-      // Generate new invoice number
-      const sequence = currentMonthInvoices.length + 1;
-      const newInvoiceNumber = `INV-${year}${month}-${String(sequence).padStart(3, '0')}`;
-      
-      setFormData(prev => ({
-        ...prev,
-        number: newInvoiceNumber,
-      }));
+        // Generate new invoice number
+        const sequence = currentMonthInvoices.length + 1;
+        const newInvoiceNumber = `INV-${year}${month}-${String(sequence).padStart(3, '0')}`;
+        console.log('Generated invoice number:', newInvoiceNumber);
+        
+        setFormData(prev => ({
+          ...prev,
+          number: newInvoiceNumber,
+        }));
+      } catch (error) {
+        console.error('Error generating invoice number:', error);
+      }
     };
 
     generateInvoiceNumber();
@@ -84,29 +110,35 @@ export default function NewInvoicePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Calculate totals
-    const subtotal = formData.items.reduce((sum, item) => sum + item.amount, 0);
-    const tax = subtotal * 0.11; // 11% tax
-    
-    await db.addInvoice({
-      number: formData.number,
-      date: formData.date,
-      dueDate: formData.dueDate,
-      clientId: parseInt(formData.clientId.toString()),
-      items: formData.items.map(item => ({
-        description: item.description,
-        quantity: item.quantity,
-        rate: item.rate,
-        amount: item.amount
-      })),
-      subtotal,
-      tax,
-      total: subtotal + tax,
-      status: 'draft'
-    });
-    
-    router.push('/invoices');
+    try {
+      console.log('Submitting invoice:', formData);
+      
+      // Calculate total
+      const total = formData.items.reduce((sum, item) => sum + item.amount, 0);
+      
+      const newInvoice = {
+        number: formData.number,
+        date: formData.date,
+        dueDate: formData.dueDate,
+        clientId: parseInt(formData.clientId.toString()),
+        items: formData.items.map(item => ({
+          description: item.description,
+          quantity: item.quantity,
+          rate: item.rate,
+          amount: item.amount
+        })),
+        total,
+        status: 'draft' as const
+      };
+      
+      console.log('Adding invoice:', newInvoice);
+      await db.addInvoice(newInvoice);
+      console.log('Invoice added successfully');
+      
+      router.push('/invoices');
+    } catch (error) {
+      console.error('Error submitting invoice:', error);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -119,21 +151,21 @@ export default function NewInvoicePage() {
 
   const handleItemChange = (index: number, field: 'description' | 'quantity' | 'rate', value: string | number) => {
     const newItems = [...formData.items];
+    const quantity = field === 'quantity' ? Number(value) : Number(newItems[index].quantity);
+    const rate = field === 'rate' ? Number(value) : Number(newItems[index].rate);
+    
     newItems[index] = {
       ...newItems[index],
       [field]: value,
-      amount: field === 'quantity' || field === 'rate'
-        ? Number(newItems[index].quantity) * Number(newItems[index].rate)
-        : newItems[index].amount,
+      amount: quantity * rate
     };
-    const subtotal = newItems.reduce((sum, item) => sum + item.amount, 0);
-    const tax = subtotal * 0.11; // 11% tax
+
+    const total = newItems.reduce((sum, item) => sum + item.amount, 0);
+    
     setFormData(prev => ({
       ...prev,
       items: newItems,
-      subtotal,
-      tax,
-      total: subtotal + tax,
+      total
     }));
   };
 
@@ -149,6 +181,25 @@ export default function NewInvoicePage() {
       ...prev,
       items: prev.items.filter((_, i) => i !== index),
     }));
+  };
+
+  const formatCurrency = (amount: number) => {
+    if (!settings) return amount.toString();
+    
+    const currencyMap: { [key: string]: string } = {
+      'Rp': 'IDR',
+      'USD': 'USD',
+      'EUR': 'EUR',
+      'GBP': 'GBP',
+      'SGD': 'SGD'
+    };
+    
+    return new Intl.NumberFormat('id-ID', {
+      style: 'currency',
+      currency: currencyMap[settings.currency] || 'IDR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(amount);
   };
 
   return (
@@ -304,7 +355,7 @@ export default function NewInvoicePage() {
 
             <div className="flex justify-between items-center pt-4 border-t border-gray-200">
               <div className="text-lg font-medium text-gray-900 dark:text-white">
-                Total: ${formData.total.toLocaleString()}
+                Total: {formatCurrency(formData.total)}
               </div>
               <div className="flex space-x-3">
                 <button

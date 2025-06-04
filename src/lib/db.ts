@@ -1,5 +1,39 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 
+interface BankAccount {
+  bankName: string;
+  accountNumber: string;
+  accountHolder: string;
+}
+
+interface SettingsRecord {
+  key: string;
+  companyName: string;
+  email: string;
+  companyAddress: string;
+  companyPhone: string;
+  companyWebsite: string;
+  bankAccounts: BankAccount[];
+  currency: string;
+}
+
+interface Invoice {
+  id?: number;
+  number: string;
+  date: string;
+  dueDate: string;
+  clientId: number;
+  items: {
+    description: string;
+    quantity: number;
+    rate: number;
+    amount: number;
+  }[];
+  total: number;
+  status: 'draft' | 'sent' | 'paid' | 'overdue';
+  notes?: string;
+}
+
 interface InvoiceDB extends DBSchema {
   clients: {
     key: number;
@@ -15,37 +49,12 @@ interface InvoiceDB extends DBSchema {
   };
   invoices: {
     key: number;
-    value: {
-      id?: number;
-      number: string;
-      date: string;
-      dueDate: string;
-      clientId: number;
-      items: {
-        description: string;
-        quantity: number;
-        rate: number;
-        amount: number;
-      }[];
-      subtotal: number;
-      tax: number;
-      total: number;
-      status: 'draft' | 'sent' | 'paid' | 'overdue';
-      notes?: string;
-    };
+    value: Invoice;
     indexes: { 'by-number': string; 'by-client': number; 'by-date': string };
   };
   settings: {
     key: string;
-    value: {
-      companyName: string;
-      email: string;
-      bankAccounts: {
-        bankName: string;
-        accountNumber: string;
-        accountName: string;
-      }[];
-    };
+    value: SettingsRecord;
   };
 }
 
@@ -64,16 +73,20 @@ class DatabaseService {
 
   async init() {
     if (!this.db) {
+      console.log('Initializing database...');
       this.db = await openDB<InvoiceDB>('invoice-app', 1, {
         upgrade(db) {
+          console.log('Upgrading database...');
           // Create clients store
           if (!db.objectStoreNames.contains('clients')) {
+            console.log('Creating clients store...');
             const clientStore = db.createObjectStore('clients', { keyPath: 'id', autoIncrement: true });
             clientStore.createIndex('by-name', 'name');
           }
 
           // Create invoices store
           if (!db.objectStoreNames.contains('invoices')) {
+            console.log('Creating invoices store...');
             const invoiceStore = db.createObjectStore('invoices', { keyPath: 'id', autoIncrement: true });
             invoiceStore.createIndex('by-number', 'number');
             invoiceStore.createIndex('by-client', 'clientId');
@@ -82,18 +95,95 @@ class DatabaseService {
 
           // Create settings store
           if (!db.objectStoreNames.contains('settings')) {
-            db.createObjectStore('settings');
+            console.log('Creating settings store...');
+            const settingsStore = db.createObjectStore('settings', { keyPath: 'key' });
+            // Initialize default settings
+            const defaultSettings: SettingsRecord = {
+              key: 'company',
+              companyName: 'My Company',
+              email: 'contact@mycompany.com',
+              companyAddress: '123 Business St, City',
+              companyPhone: '+1234567890',
+              companyWebsite: 'www.mycompany.com',
+              bankAccounts: [{
+                bankName: 'Bank Name',
+                accountNumber: '1234567890',
+                accountHolder: 'My Company'
+              }],
+              currency: 'Rp'
+            };
+            settingsStore.add(defaultSettings);
           }
         },
       });
+
+      // Initialize with sample data if empty
+      await this.initializeSampleData();
     }
     return this.db;
   }
 
+  private async initializeSampleData() {
+    if (!this.db) return;
+
+    console.log('Checking for existing data...');
+    // Check if we already have data
+    const [clients, invoices] = await Promise.all([
+      this.db.getAll('clients'),
+      this.db.getAll('invoices')
+    ]);
+
+    console.log('Existing clients:', clients.length);
+    console.log('Existing invoices:', invoices.length);
+
+    if (clients.length === 0) {
+      console.log('Adding sample clients...');
+      // Add sample clients
+      await Promise.all([
+        this.db.add('clients', {
+          name: 'John Doe',
+          company: 'ABC Corp',
+          email: 'john@abccorp.com',
+          phone: '+1234567890',
+          address: '123 Main St, City'
+        }),
+        this.db.add('clients', {
+          name: 'Jane Smith',
+          company: 'XYZ Ltd',
+          email: 'jane@xyzltd.com',
+          phone: '+0987654321',
+          address: '456 Business Ave, Town'
+        })
+      ]);
+    }
+
+    if (invoices.length === 0) {
+      console.log('Adding sample invoice...');
+      // Add sample invoice
+      await this.db.add('invoices', {
+        number: 'INV-202401-001',
+        date: new Date().toISOString().split('T')[0],
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        clientId: 1,
+        items: [{
+          description: 'Web Development',
+          quantity: 1,
+          rate: 1000000,
+          amount: 1000000
+        }],
+        total: 1000000,
+        status: 'draft'
+      });
+    }
+  }
+
   // Client operations
   async getClients() {
+    console.log('Getting clients...');
     const db = await this.init();
-    return db.getAll('clients');
+    const clients = await db.getAll('clients');
+    console.log('Retrieved clients:', clients);
+    return clients;
   }
 
   async getClient(id: number) {
@@ -102,8 +192,11 @@ class DatabaseService {
   }
 
   async addClient(client: Omit<InvoiceDB['clients']['value'], 'id'>) {
+    console.log('Adding client:', client);
     const db = await this.init();
-    return db.add('clients', client);
+    const id = await db.add('clients', client);
+    console.log('Added client with ID:', id);
+    return id;
   }
 
   async updateClient(client: InvoiceDB['clients']['value']) {
@@ -121,8 +214,11 @@ class DatabaseService {
 
   // Invoice operations
   async getInvoices() {
+    console.log('Getting invoices...');
     const db = await this.init();
-    return db.getAll('invoices');
+    const invoices = await db.getAll('invoices');
+    console.log('Retrieved invoices:', invoices);
+    return invoices;
   }
 
   async getInvoice(id: number) {
@@ -131,11 +227,31 @@ class DatabaseService {
   }
 
   async addInvoice(invoice: Omit<InvoiceDB['invoices']['value'], 'id'>) {
+    console.log('Adding invoice:', invoice);
     const db = await this.init();
-    return db.add('invoices', invoice);
+    try {
+      // Calculate total
+      const total = invoice.items.reduce((sum, item) => {
+        const itemTotal = item.quantity * item.rate;
+        return sum + itemTotal;
+      }, 0);
+      
+      // Add invoice with calculated total
+      const newInvoice = {
+        ...invoice,
+        total
+      };
+      
+      const id = await db.add('invoices', newInvoice);
+      console.log('Added invoice with ID:', id);
+      return id;
+    } catch (error) {
+      console.error('Error adding invoice:', error);
+      throw error;
+    }
   }
 
-  async updateInvoice(invoice: InvoiceDB['invoices']['value']) {
+  async updateInvoice(invoice: Invoice) {
     const db = await this.init();
     if (invoice.id) {
       return db.put('invoices', invoice);
@@ -149,14 +265,23 @@ class DatabaseService {
   }
 
   // Settings operations
-  async getSettings() {
+  async getSettings(): Promise<SettingsRecord> {
     const db = await this.init();
-    return db.get('settings', 'company');
+    const settings = await db.get('settings', 'company');
+    if (!settings) {
+      throw new Error('Settings not found');
+    }
+    return settings;
   }
 
-  async updateSettings(settings: InvoiceDB['settings']['value']) {
+  async updateSettings(settings: Omit<SettingsRecord, 'key'>): Promise<SettingsRecord> {
     const db = await this.init();
-    return db.put('settings', settings, 'company');
+    const updatedSettings: SettingsRecord = {
+      key: 'company',
+      ...settings
+    };
+    await db.put('settings', updatedSettings);
+    return updatedSettings;
   }
 
   // Backup and Restore
@@ -193,7 +318,11 @@ class DatabaseService {
     }
 
     if (backup.settings) {
-      await db.put('settings', backup.settings, 'company');
+      const updatedSettings: SettingsRecord = {
+        key: 'company',
+        ...backup.settings
+      };
+      await db.put('settings', updatedSettings);
     }
   }
 }

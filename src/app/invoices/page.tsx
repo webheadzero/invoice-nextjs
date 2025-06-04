@@ -29,8 +29,6 @@ interface Invoice {
     rate: number;
     amount: number;
   }[];
-  subtotal: number;
-  tax: number;
   total: number;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
   notes?: string;

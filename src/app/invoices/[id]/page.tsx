@@ -18,8 +18,6 @@ interface Invoice {
     rate: number;
     amount: number;
   }[];
-  subtotal: number;
-  tax: number;
   total: number;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
   notes?: string;
@@ -35,24 +33,28 @@ interface Client {
 }
 
 interface Settings {
-  companyName: string;
-  email: string;
+  companyName?: string;
+  email?: string;
   bankAccounts: {
     bankName: string;
     accountNumber: string;
-    accountName: string;
+    accountHolder: string;
   }[];
+  currency: string;
+  companyPhone?: string;
 }
 
 export default function InvoicePage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { toPDF, targetRef } = usePDF({ filename: `invoice-${params.id}.pdf` });
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [client, setClient] = useState<Client | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { toPDF, targetRef } = usePDF({ 
+    filename: invoice ? `invoice-${invoice.number}.pdf` : `invoice-${params.id}.pdf` 
+  });
 
   useEffect(() => {
     const loadData = async () => {
@@ -176,7 +178,7 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
 
   return (
     <div className="max-w-7xl mx-auto">
-      <div className="md:flex md:items-center md:justify-between mb-6">
+      <div className="md:flex md:items-center md:justify-between mb-6 print:hidden">
         <div className="flex-1 min-w-0">
           <h2 className="text-2xl font-bold leading-7 text-gray-900 dark:text-white sm:text-3xl sm:truncate">
             Invoice #{invoice.number}
@@ -185,8 +187,28 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
         <div className="mt-4 flex md:mt-0 md:ml-4 space-x-3">
           <button
             type="button"
+            onClick={() => router.push(`/invoices/${params.id}?print=true`)}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
+          >
+            <svg className="-ml-1 mr-2 h-5 w-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+            </svg>
+            Print
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push(`/invoices/${params.id}?download=true`)}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
+          >
+            <svg className="-ml-1 mr-2 h-5 w-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Download PDF
+          </button>
+          <button
+            type="button"
             onClick={() => router.push(`/invoices/${params.id}/edit`)}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
           >
             Edit
           </button>
@@ -200,8 +222,17 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 shadow sm:rounded-lg">
+      <div ref={targetRef} className="bg-white dark:bg-gray-800 shadow sm:rounded-lg print-content">
         <div className="px-4 py-5 sm:p-6">
+          {/* Company Header */}
+          <div className="mb-12">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{settings.companyName}</h1>
+            <div className="mt-2 space-y-1">
+              {settings.companyPhone && <p className="text-sm text-gray-500 dark:text-gray-400">{settings.companyPhone}</p>}
+              {settings.email && <p className="text-sm text-gray-500 dark:text-gray-400">{settings.email}</p>}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div>
               <h3 className="text-lg font-medium text-gray-900 dark:text-white">Client Information</h3>
@@ -219,12 +250,11 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
               <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                 <p>Date: {new Date(invoice.date).toLocaleDateString()}</p>
                 <p>Due Date: {new Date(invoice.dueDate).toLocaleDateString()}</p>
-                <p>Status: {invoice.status}</p>
               </div>
             </div>
           </div>
 
-          <div className="mt-8">
+          <div className="mt-12">
             <h3 className="text-lg font-medium text-gray-900 dark:text-white">Items</h3>
             <div className="mt-4">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -250,41 +280,25 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                         {item.description}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white text-right">
                         {item.quantity}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
-                        ${item.rate.toLocaleString()}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white text-right">
+                        {formatCurrency(item.rate)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 text-right">
-                        ${item.amount.toLocaleString()}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white text-right">
+                        {formatCurrency(item.quantity * item.rate)}
                       </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr>
-                    <td colSpan={3} className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white text-right">
-                      Subtotal
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 text-right">
-                      ${invoice.subtotal.toLocaleString()}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td colSpan={3} className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white text-right">
-                      Tax (11%)
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 text-right">
-                      ${invoice.tax.toLocaleString()}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td colSpan={3} className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white text-right">
+                    <td colSpan={3} className="px-6 py-4 text-right text-sm font-medium text-gray-900 dark:text-white">
                       Total
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white text-right">
-                      ${invoice.total.toLocaleString()}
+                    <td className="px-6 py-4 text-right text-sm font-medium text-gray-900 dark:text-white">
+                      {formatCurrency(invoice.total)}
                     </td>
                   </tr>
                 </tfoot>
@@ -293,7 +307,7 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
           </div>
 
           {invoice.notes && (
-            <div className="mt-8">
+            <div className="mt-12">
               <h3 className="text-lg font-medium text-gray-900 dark:text-white">Notes</h3>
               <div className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                 {invoice.notes}
@@ -301,25 +315,21 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
             </div>
           )}
 
-          <div className="mt-8">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">Status</h3>
-            <div className="mt-4 flex space-x-3">
-              {(['draft', 'sent', 'paid', 'overdue'] as const).map((status) => (
-                <button
-                  key={status}
-                  type="button"
-                  onClick={() => handleStatusChange(status)}
-                  className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-                    invoice.status === status
-                      ? 'bg-blue-600 hover:bg-blue-700'
-                      : 'bg-gray-600 hover:bg-gray-700'
-                  } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900`}
-                >
-                  {status.charAt(0).toUpperCase() + status.slice(1)}
-                </button>
-              ))}
+          {/* Bank Information */}
+          {settings.bankAccounts && settings.bankAccounts.length > 0 && (
+            <div className="mt-12">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white">Please transfer to:</h3>
+              <div className="mt-4 space-y-4">
+                {settings.bankAccounts.map((account, index) => (
+                  <div key={index} className="text-sm text-gray-500 dark:text-gray-400">
+                    <p className="font-medium text-gray-900 dark:text-white">{account.bankName}</p>
+                    <p>Account Number: {account.accountNumber}</p>
+                    <p>Account Holder: {account.accountHolder}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

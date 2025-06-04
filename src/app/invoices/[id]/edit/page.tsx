@@ -28,8 +28,6 @@ interface Invoice {
     rate: number;
     amount: number;
   }[];
-  subtotal: number;
-  tax: number;
   total: number;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
   notes?: string;
@@ -44,8 +42,6 @@ export default function EditInvoicePage({ params }: { params: { id: string } }) 
     dueDate: new Date().toISOString().split('T')[0],
     clientId: 0,
     items: [{ description: '', quantity: 1, rate: 0, amount: 0 }],
-    subtotal: 0,
-    tax: 0,
     total: 0,
     status: 'draft',
   });
@@ -91,14 +87,11 @@ export default function EditInvoicePage({ params }: { params: { id: string } }) 
         ? Number(newItems[index].quantity) * Number(newItems[index].rate)
         : newItems[index].amount,
     };
-    const subtotal = newItems.reduce((sum, item) => sum + item.amount, 0);
-    const tax = subtotal * 0.11; // 11% tax
+    const total = newItems.reduce((sum, item) => sum + item.amount, 0);
     setFormData(prev => ({
       ...prev,
       items: newItems,
-      subtotal,
-      tax,
-      total: subtotal + tax,
+      total,
     }));
   };
 
@@ -291,7 +284,7 @@ export default function EditInvoicePage({ params }: { params: { id: string } }) 
 
         <div className="flex justify-between items-center pt-4 border-t border-gray-200">
           <div className="text-lg font-medium text-gray-900">
-            Total: ${calculateTotal().toLocaleString()}
+            Total: Rp {calculateTotal().toLocaleString()}
           </div>
           <div className="flex space-x-3">
             <button

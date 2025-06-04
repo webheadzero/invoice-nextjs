@@ -6,72 +6,64 @@ import { db } from '@/lib/db';
 interface BankAccount {
   bankName: string;
   accountNumber: string;
-  accountName: string;
   accountHolder: string;
 }
 
 interface Settings {
   companyName: string;
+  email: string;
   companyAddress: string;
   companyPhone: string;
-  companyEmail: string;
   companyWebsite: string;
   bankAccounts: BankAccount[];
-  taxId: string;
   currency: string;
-  logo?: string;
 }
 
 interface DbSettings {
-  companyName: string;
-  email: string;
+  companyName?: string;
+  email?: string;
   bankAccounts: {
     bankName: string;
     accountNumber: string;
-    accountName: string;
   }[];
+  currency: string;
 }
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<Settings>({
     companyName: '',
+    email: '',
     companyAddress: '',
     companyPhone: '',
-    companyEmail: '',
     companyWebsite: '',
     bankAccounts: [],
-    taxId: '',
-    currency: 'IDR',
+    currency: 'Rp'
   });
 
   const [newBankAccount, setNewBankAccount] = useState<BankAccount>({
     bankName: '',
     accountNumber: '',
-    accountName: '',
     accountHolder: '',
   });
 
   useEffect(() => {
     const loadSettings = async () => {
-      const data = await db.getSettings() as DbSettings;
-      if (data) {
-        // Transform data to match Settings interface
-        const transformedData: Settings = {
-          companyName: data.companyName,
-          companyAddress: '',
-          companyPhone: '',
-          companyEmail: data.email,
-          companyWebsite: '',
-          bankAccounts: data.bankAccounts.map(account => ({
-            bankName: account.bankName,
-            accountNumber: account.accountNumber,
-            accountName: account.accountName,
-            accountHolder: account.accountName
-          })),
-          taxId: '',
-          currency: 'IDR'
-        };
-        setSettings(transformedData);
+      try {
+        const data = await db.getSettings();
+        console.log('Loaded settings from DB:', data);
+        if (data) {
+          setSettings({
+            companyName: data.companyName || '',
+            email: data.email || '',
+            companyAddress: data.companyAddress || '',
+            companyPhone: data.companyPhone || '',
+            companyWebsite: data.companyWebsite || '',
+            bankAccounts: data.bankAccounts || [],
+            currency: data.currency || 'Rp'
+          });
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
       }
     };
     loadSettings();
@@ -79,17 +71,37 @@ export default function SettingsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Transform data back to match database schema
-    const dataToSave: DbSettings = {
-      companyName: settings.companyName,
-      email: settings.companyEmail,
-      bankAccounts: settings.bankAccounts.map(account => ({
-        bankName: account.bankName,
-        accountNumber: account.accountNumber,
-        accountName: account.accountHolder
-      }))
-    };
-    await db.updateSettings(dataToSave);
+    try {
+      console.log('Saving settings:', settings);
+      await db.updateSettings(settings);
+      alert('Settings saved successfully!');
+      
+      // Reload settings after save
+      const updatedData = await db.getSettings();
+      console.log('Reloaded settings after save:', updatedData);
+      if (updatedData) {
+        setSettings({
+          companyName: updatedData.companyName || '',
+          email: updatedData.email || '',
+          companyAddress: updatedData.companyAddress || '',
+          companyPhone: updatedData.companyPhone || '',
+          companyWebsite: updatedData.companyWebsite || '',
+          bankAccounts: updatedData.bankAccounts || [],
+          currency: updatedData.currency || 'Rp'
+        });
+      }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      alert('Error saving settings. Please try again.');
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setSettings(prev => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const handleBankAccountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,7 +113,7 @@ export default function SettingsPage() {
   };
 
   const addBankAccount = () => {
-    if (newBankAccount.bankName && newBankAccount.accountNumber && newBankAccount.accountName && newBankAccount.accountHolder) {
+    if (newBankAccount.bankName && newBankAccount.accountNumber && newBankAccount.accountHolder) {
       setSettings(prev => ({
         ...prev,
         bankAccounts: [...prev.bankAccounts, newBankAccount],
@@ -109,7 +121,6 @@ export default function SettingsPage() {
       setNewBankAccount({
         bankName: '',
         accountNumber: '',
-        accountName: '',
         accountHolder: '',
       });
     }
@@ -177,7 +188,7 @@ export default function SettingsPage() {
                   id="companyName"
                   required
                   value={settings.companyName}
-                  onChange={(e) => setSettings(prev => ({ ...prev, companyName: e.target.value }))}
+                  onChange={handleChange}
                   className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                 />
               </div>
@@ -192,9 +203,8 @@ export default function SettingsPage() {
                   type="text"
                   name="companyAddress"
                   id="companyAddress"
-                  required
                   value={settings.companyAddress}
-                  onChange={(e) => setSettings(prev => ({ ...prev, companyAddress: e.target.value }))}
+                  onChange={handleChange}
                   className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                 />
               </div>
@@ -209,9 +219,8 @@ export default function SettingsPage() {
                   type="tel"
                   name="companyPhone"
                   id="companyPhone"
-                  required
                   value={settings.companyPhone}
-                  onChange={(e) => setSettings(prev => ({ ...prev, companyPhone: e.target.value }))}
+                  onChange={handleChange}
                   className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                 />
               </div>
@@ -224,11 +233,11 @@ export default function SettingsPage() {
               <div className="mt-1">
                 <input
                   type="email"
-                  name="companyEmail"
+                  name="email"
                   id="companyEmail"
                   required
-                  value={settings.companyEmail}
-                  onChange={(e) => setSettings(prev => ({ ...prev, companyEmail: e.target.value }))}
+                  value={settings.email}
+                  onChange={handleChange}
                   className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                 />
               </div>
@@ -244,23 +253,7 @@ export default function SettingsPage() {
                   name="companyWebsite"
                   id="companyWebsite"
                   value={settings.companyWebsite}
-                  onChange={(e) => setSettings(prev => ({ ...prev, companyWebsite: e.target.value }))}
-                  className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="taxId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Tax ID
-              </label>
-              <div className="mt-1">
-                <input
-                  type="text"
-                  name="taxId"
-                  id="taxId"
-                  value={settings.taxId}
-                  onChange={(e) => setSettings(prev => ({ ...prev, taxId: e.target.value }))}
+                  onChange={handleChange}
                   className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                 />
               </div>
@@ -272,15 +265,17 @@ export default function SettingsPage() {
               </label>
               <div className="mt-1">
                 <select
-                  name="currency"
                   id="currency"
+                  name="currency"
                   value={settings.currency}
-                  onChange={(e) => setSettings(prev => ({ ...prev, currency: e.target.value }))}
+                  onChange={handleChange}
                   className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                 >
-                  <option value="IDR">IDR</option>
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
+                  <option value="Rp">Indonesian Rupiah (Rp)</option>
+                  <option value="USD">US Dollar ($)</option>
+                  <option value="EUR">Euro (€)</option>
+                  <option value="GBP">British Pound (£)</option>
+                  <option value="SGD">Singapore Dollar (S$)</option>
                 </select>
               </div>
             </div>
@@ -334,19 +329,6 @@ export default function SettingsPage() {
                     name="accountNumber"
                     id="accountNumber"
                     value={newBankAccount.accountNumber}
-                    onChange={handleBankAccountChange}
-                    className="mt-1 shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                <div>
-                  <label htmlFor="accountName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Account Name
-                  </label>
-                  <input
-                    type="text"
-                    name="accountName"
-                    id="accountName"
-                    value={newBankAccount.accountName}
                     onChange={handleBankAccountChange}
                     className="mt-1 shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                   />
