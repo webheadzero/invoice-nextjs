@@ -1,0 +1,42 @@
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  .print-content,
+  .print-content * {
+    visibility: visible;
+  }
+  
+  .print-content {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-content {
+    box-shadow: none !important;
+  }
+
+  .print-content table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .print-content th,
+  .print-content td {
+    border: 1px solid #ddd;
+    padding: 8px;
+  }
+
+  .print-content th {
+    background-color: #f8f9fa !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+} 
