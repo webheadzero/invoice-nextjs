@@ -32,6 +32,8 @@ interface Invoice {
   total: number;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
   notes?: string;
+  subtotal: number;
+  discount: number;
 }
 
 export default function InvoicesPage() {
@@ -106,9 +108,9 @@ export default function InvoicesPage() {
                   </div>
                   <div className="ml-4 flex-shrink-0 flex space-x-4">
                     <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                      <td className="whitespace-nowrap text-sm text-gray-900 dark:text-white text-right">
                         {formatCurrency(invoice.total)}
-                      </p>
+                      </td>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         {new Date(invoice.date).toLocaleDateString('id-ID')}
                       </p>

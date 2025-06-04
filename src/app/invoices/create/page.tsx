@@ -19,6 +19,8 @@ interface Invoice {
   total: number;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
   notes?: string;
+  subtotal: number;
+  discount: number;
 }
 
 interface Client {
@@ -41,6 +43,8 @@ export default function CreateInvoicePage() {
     items: [{ description: '', quantity: 1, rate: 0, amount: 0 }],
     total: 0,
     status: 'draft',
+    subtotal: 0,
+    discount: 0
   });
 
   useEffect(() => {
@@ -98,7 +102,8 @@ export default function CreateInvoicePage() {
     e.preventDefault();
     
     // Calculate total
-    const total = formData.items.reduce((sum, item) => sum + item.amount, 0);
+    const subtotal = formData.items.reduce((sum, item) => sum + item.amount, 0);
+    const total = subtotal - formData.discount;
     
     await db.addInvoice({
       number: formData.number,
@@ -112,7 +117,9 @@ export default function CreateInvoicePage() {
         amount: item.amount
       })),
       total,
-      status: 'draft'
+      status: 'draft',
+      subtotal,
+      discount: formData.discount
     });
     
     router.push('/invoices');

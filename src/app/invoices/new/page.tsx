@@ -25,6 +25,8 @@ interface Invoice {
     rate: number;
     amount: number;
   }[];
+  subtotal: number;
+  discount: number;
   total: number;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
   notes?: string;
@@ -44,6 +46,8 @@ export default function NewInvoicePage() {
     dueDate: new Date().toISOString().split('T')[0],
     clientId: 0,
     items: [{ description: '', quantity: 1, rate: 0, amount: 0 }],
+    subtotal: 0,
+    discount: 0,
     total: 0,
     status: 'draft' as const,
   });
@@ -113,8 +117,9 @@ export default function NewInvoicePage() {
     try {
       console.log('Submitting invoice:', formData);
       
-      // Calculate total
-      const total = formData.items.reduce((sum, item) => sum + item.amount, 0);
+      // Calculate subtotal and total
+      const subtotal = formData.items.reduce((sum, item) => sum + item.amount, 0);
+      const total = subtotal - formData.discount;
       
       const newInvoice = {
         number: formData.number,
@@ -127,6 +132,8 @@ export default function NewInvoicePage() {
           rate: item.rate,
           amount: item.amount
         })),
+        subtotal,
+        discount: formData.discount,
         total,
         status: 'draft' as const
       };
@@ -143,10 +150,21 @@ export default function NewInvoicePage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData(prev => {
+      const newData = {
+        ...prev,
+        [name]: value,
+      };
+      
+      // Recalculate totals when discount changes
+      if (name === 'discount') {
+        const subtotal = newData.items.reduce((sum, item) => sum + item.amount, 0);
+        newData.subtotal = subtotal;
+        newData.total = subtotal - Number(value);
+      }
+      
+      return newData;
+    });
   };
 
   const handleItemChange = (index: number, field: 'description' | 'quantity' | 'rate', value: string | number) => {
@@ -160,11 +178,13 @@ export default function NewInvoicePage() {
       amount: quantity * rate
     };
 
-    const total = newItems.reduce((sum, item) => sum + item.amount, 0);
+    const subtotal = newItems.reduce((sum, item) => sum + item.amount, 0);
+    const total = subtotal - formData.discount;
     
     setFormData(prev => ({
       ...prev,
       items: newItems,
+      subtotal,
       total
     }));
   };
@@ -177,10 +197,18 @@ export default function NewInvoicePage() {
   };
 
   const removeItem = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      items: prev.items.filter((_, i) => i !== index),
-    }));
+    setFormData(prev => {
+      const newItems = prev.items.filter((_, i) => i !== index);
+      const subtotal = newItems.reduce((sum, item) => sum + item.amount, 0);
+      const total = subtotal - prev.discount;
+      
+      return {
+        ...prev,
+        items: newItems,
+        subtotal,
+        total
+      };
+    });
   };
 
   const formatCurrency = (amount: number) => {
@@ -353,25 +381,48 @@ export default function NewInvoicePage() {
               </div>
             </div>
 
-            <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-              <div className="text-lg font-medium text-gray-900 dark:text-white">
-                Total: {formatCurrency(formData.total)}
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm text-gray-500 dark:text-gray-400">Subtotal:</span>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  {formatCurrency(formData.subtotal)}
+                </span>
               </div>
-              <div className="flex space-x-3">
-                <button
-                  type="button"
-                  onClick={() => router.back()}
-                  className="bg-white dark:bg-gray-700 py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
-                >
-                  Save
-                </button>
+              <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center space-x-2">
+                  <label htmlFor="discount" className="text-sm text-gray-500 dark:text-gray-400">
+                    Discount:
+                  </label>
+                  <input
+                    type="number"
+                    name="discount"
+                    id="discount"
+                    min="0"
+                    step="0.01"
+                    value={formData.discount}
+                    onChange={handleChange}
+                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-32 sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                  {formatCurrency(formData.discount)}
+                </span>
               </div>
+              <div className="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
+                <span className="text-lg font-medium text-gray-900 dark:text-white">Total:</span>
+                <span className="text-lg font-medium text-gray-900 dark:text-white">
+                  {formatCurrency(formData.total)}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
+              >
+                Save
+              </button>
             </div>
           </form>
         </div>

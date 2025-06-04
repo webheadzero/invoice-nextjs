@@ -21,6 +21,8 @@ interface Invoice {
   total: number;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
   notes?: string;
+  subtotal: number;
+  discount: number;
 }
 
 interface Client {
@@ -62,35 +64,52 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
         setIsLoading(true);
         setError(null);
         
+        // Validate invoice ID
+        const invoiceId = parseInt(params.id);
+        if (isNaN(invoiceId)) {
+          throw new Error('Invalid invoice ID');
+        }
+        
+        // Initialize database first
+        await db.init();
+        
+        console.log('Loading invoice with ID:', invoiceId);
         // Load invoice data
-        const invoiceData = await db.getInvoice(parseInt(params.id));
+        const invoiceData = await db.getInvoice(invoiceId);
+        console.log('Loaded invoice data:', invoiceData);
         if (!invoiceData) {
           throw new Error('Invoice not found');
         }
         setInvoice(invoiceData);
 
         // Load client data
+        console.log('Loading client with ID:', invoiceData.clientId);
         const clientData = await db.getClient(invoiceData.clientId);
-        if (clientData) {
-          setClient(clientData);
+        console.log('Loaded client data:', clientData);
+        if (!clientData) {
+          throw new Error('Client not found');
         }
+        setClient(clientData);
 
         // Load settings
+        console.log('Loading settings...');
         const settingsData = await db.getSettings();
-        if (settingsData) {
-          setSettings(settingsData);
+        console.log('Loaded settings data:', settingsData);
+        if (!settingsData) {
+          throw new Error('Settings not found');
         }
+        setSettings(settingsData);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load invoice data');
         console.error('Error loading invoice data:', err);
-        router.push('/invoices');
+        setError(err instanceof Error ? err.message : 'Failed to load invoice data');
+        // Don't redirect immediately, let the error UI handle it
       } finally {
         setIsLoading(false);
       }
     };
 
     loadData();
-  }, [params.id, router]);
+  }, [params.id]);
 
   useEffect(() => {
     if (searchParams.get('print') === 'true') {
@@ -109,21 +128,12 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
     }).format(amount);
   };
 
-  const calculateTotal = () => {
-    if (!invoice) return 0;
-    return invoice.items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
-  };
-
-  const handlePrint = () => {
-    window.print();
-  };
-
   const handleStatusChange = async (newStatus: Invoice['status']) => {
     if (!invoice) return;
 
     try {
       const updatedInvoice = { ...invoice, status: newStatus };
-      await db.updateInvoice(updatedInvoice);
+      await db.updateInvoice(invoice.id!, updatedInvoice);
       setInvoice(updatedInvoice);
     } catch (error) {
       console.error('Error updating invoice status:', error);
@@ -207,7 +217,7 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
           </button>
           <button
             type="button"
-            onClick={() => router.push(`/invoices/${params.id}/edit`)}
+            onClick={() => router.push(`/invoices/${invoice.id}/edit`)}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
           >
             Edit
@@ -254,55 +264,77 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
             </div>
           </div>
 
-          <div className="mt-12">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white">Items</h3>
-            <div className="mt-4">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead>
-                  <tr>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-700 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Description
-                    </th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-700 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Quantity
-                    </th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-700 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Rate
-                    </th>
-                    <th className="px-6 py-3 bg-gray-50 dark:bg-gray-700 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                      Amount
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {invoice.items.map((item, index) => (
-                    <tr key={index}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                        {item.description}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white text-right">
-                        {item.quantity}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white text-right">
-                        {formatCurrency(item.rate)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white text-right">
-                        {formatCurrency(item.quantity * item.rate)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan={3} className="px-6 py-4 text-right text-sm font-medium text-gray-900 dark:text-white">
-                      Total
-                    </td>
-                    <td className="px-6 py-4 text-right text-sm font-medium text-gray-900 dark:text-white">
-                      {formatCurrency(invoice.total)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
+          <div className="mt-8">
+            <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">Items</h3>
+            <div className="flex flex-col">
+              <div className="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+                <div className="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+                  <div className="shadow overflow-hidden border-b border-gray-200 dark:border-gray-700 sm:rounded-lg">
+                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                      <thead className="bg-gray-50 dark:bg-gray-800">
+                        <tr>
+                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Description
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Quantity
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Rate
+                          </th>
+                          <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                            Amount
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                        {invoice.items.map((item, index) => (
+                          <tr key={index}>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                              {item.description}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white text-right">
+                              {item.quantity}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white text-right">
+                              {formatCurrency(item.rate)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white text-right">
+                              {formatCurrency(item.amount)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-gray-50 dark:bg-gray-800">
+                        <tr>
+                          <td colSpan={3} className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white text-right">
+                            Subtotal:
+                          </td>
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white text-right">
+                            {formatCurrency(invoice.subtotal)}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td colSpan={3} className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white text-right">
+                            Discount:
+                          </td>
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white text-right">
+                            {formatCurrency(invoice.discount)}
+                          </td>
+                        </tr>
+                        <tr>
+                          <td colSpan={3} className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white text-right">
+                            Total:
+                          </td>
+                          <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white text-right">
+                            {formatCurrency(invoice.total)}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -330,6 +362,21 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
               </div>
             </div>
           )}
+
+          <div className="mt-8 flex justify-end space-x-3">
+            <button
+              onClick={() => router.push('/invoices')}
+              className="bg-white dark:bg-gray-700 py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
+            >
+              Back
+            </button>
+            <button
+              onClick={() => router.push(`/invoices/${invoice.id}/edit`)}
+              className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
+            >
+              Edit
+            </button>
+          </div>
         </div>
       </div>
     </div>

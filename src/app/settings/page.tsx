@@ -133,37 +133,6 @@ export default function SettingsPage() {
     }));
   };
 
-  const handleBackup = async () => {
-    const backupData = await db.backup();
-    const blob = new Blob([backupData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `invoice-app-backup-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const handleRestore = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        try {
-          const backupData = event.target?.result as string;
-          await db.restore(backupData);
-          alert('Data restored successfully!');
-          window.location.reload();
-        } catch (error) {
-          alert('Error restoring data. Please make sure the backup file is valid.');
-        }
-      };
-      reader.readAsText(file);
-    }
-  };
-
   return (
     <div className="max-w-7xl mx-auto">
       <div className="md:flex md:items-center md:justify-between mb-6">

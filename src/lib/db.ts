@@ -32,6 +32,8 @@ interface Invoice {
   total: number;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
   notes?: string;
+  subtotal: number;
+  discount: number;
 }
 
 interface InvoiceDB extends DBSchema {
@@ -124,57 +126,111 @@ class DatabaseService {
   }
 
   private async initializeSampleData() {
-    if (!this.db) return;
+    console.log('Initializing sample data...');
+    const db = await this.init();
 
-    console.log('Checking for existing data...');
     // Check if we already have data
-    const [clients, invoices] = await Promise.all([
-      this.db.getAll('clients'),
-      this.db.getAll('invoices')
-    ]);
-
-    console.log('Existing clients:', clients.length);
-    console.log('Existing invoices:', invoices.length);
+    const clients = await this.getClients();
+    const invoices = await this.getInvoices();
+    const settings = await this.getSettings();
 
     if (clients.length === 0) {
       console.log('Adding sample clients...');
-      // Add sample clients
-      await Promise.all([
-        this.db.add('clients', {
+      const sampleClients = [
+        {
           name: 'John Doe',
-          company: 'ABC Corp',
-          email: 'john@abccorp.com',
+          company: 'Acme Corp',
+          email: 'john@acmecorp.com',
           phone: '+1234567890',
-          address: '123 Main St, City'
-        }),
-        this.db.add('clients', {
+          address: '123 Business St, City'
+        },
+        {
           name: 'Jane Smith',
-          company: 'XYZ Ltd',
-          email: 'jane@xyzltd.com',
+          company: 'Tech Solutions',
+          email: 'jane@techsolutions.com',
           phone: '+0987654321',
-          address: '456 Business Ave, Town'
-        })
-      ]);
+          address: '456 Tech Ave, Town'
+        }
+      ];
+
+      for (const client of sampleClients) {
+        await db.add('clients', client);
+      }
     }
 
     if (invoices.length === 0) {
-      console.log('Adding sample invoice...');
-      // Add sample invoice
-      await this.db.add('invoices', {
-        number: 'INV-202401-001',
-        date: new Date().toISOString().split('T')[0],
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        clientId: 1,
-        items: [{
-          description: 'Web Development',
-          quantity: 1,
-          rate: 1000000,
-          amount: 1000000
-        }],
-        total: 1000000,
-        status: 'draft'
-      });
+      console.log('Adding sample invoices...');
+      const sampleInvoices = [
+        {
+          number: 'INV-202403-001',
+          date: '2024-03-01',
+          dueDate: '2024-03-15',
+          clientId: 1,
+          items: [
+            {
+              description: 'Web Development',
+              quantity: 1,
+              rate: 1000000,
+              amount: 1000000
+            }
+          ],
+          subtotal: 1000000,
+          discount: 0,
+          total: 1000000,
+          status: 'paid' as const
+        },
+        {
+          number: 'INV-202403-002',
+          date: '2024-03-05',
+          dueDate: '2024-03-20',
+          clientId: 2,
+          items: [
+            {
+              description: 'Mobile App Development',
+              quantity: 1,
+              rate: 2000000,
+              amount: 2000000
+            }
+          ],
+          subtotal: 2000000,
+          discount: 0,
+          total: 2000000,
+          status: 'sent' as const
+        }
+      ];
+
+      for (const invoice of sampleInvoices) {
+        await db.add('invoices', invoice);
+      }
     }
+
+    if (!settings) {
+      console.log('Adding sample settings...');
+      const defaultSettings: SettingsRecord = {
+        key: 'company',
+        companyName: 'My Company',
+        email: 'contact@mycompany.com',
+        companyAddress: '123 Business St, City',
+        companyPhone: '+1234567890',
+        companyWebsite: 'www.mycompany.com',
+        bankAccounts: [
+          {
+            bankName: 'Bank Central Asia',
+            accountNumber: '1234567890',
+            accountHolder: 'My Company'
+          },
+          {
+            bankName: 'Bank Mandiri',
+            accountNumber: '0987654321',
+            accountHolder: 'My Company'
+          }
+        ],
+        currency: 'Rp'
+      };
+      await db.add('settings', defaultSettings);
+    }
+
+    console.log('Sample data initialization completed');
   }
 
   // Client operations
@@ -226,37 +282,44 @@ class DatabaseService {
     return db.get('invoices', id);
   }
 
-  async addInvoice(invoice: Omit<InvoiceDB['invoices']['value'], 'id'>) {
-    console.log('Adding invoice:', invoice);
+  async addInvoice(invoice: Invoice) {
     const db = await this.init();
-    try {
-      // Calculate total
-      const total = invoice.items.reduce((sum, item) => {
-        const itemTotal = item.quantity * item.rate;
-        return sum + itemTotal;
-      }, 0);
-      
-      // Add invoice with calculated total
-      const newInvoice = {
-        ...invoice,
-        total
-      };
-      
-      const id = await db.add('invoices', newInvoice);
-      console.log('Added invoice with ID:', id);
-      return id;
-    } catch (error) {
-      console.error('Error adding invoice:', error);
-      throw error;
-    }
+    
+    // Calculate subtotal and total
+    const subtotal = invoice.items.reduce((sum, item) => sum + item.amount, 0);
+    const total = subtotal - (invoice.discount || 0);
+
+    const newInvoice = {
+      ...invoice,
+      subtotal,
+      total,
+    };
+
+    const id = await db.add('invoices', newInvoice);
+    return { ...newInvoice, id };
   }
 
-  async updateInvoice(invoice: Invoice) {
+  async updateInvoice(id: number, invoice: Invoice) {
     const db = await this.init();
-    if (invoice.id) {
-      return db.put('invoices', invoice);
+    const existingInvoice = await db.get('invoices', id);
+    
+    if (!existingInvoice) {
+      throw new Error('Invoice not found');
     }
-    throw new Error('Invoice ID is required for update');
+
+    // Calculate subtotal and total
+    const subtotal = invoice.items.reduce((sum, item) => sum + item.amount, 0);
+    const total = subtotal - (invoice.discount || 0);
+
+    const updatedInvoice = {
+      ...invoice,
+      id,
+      subtotal,
+      total,
+    };
+
+    await db.put('invoices', updatedInvoice);
+    return updatedInvoice;
   }
 
   async deleteInvoice(id: number) {
