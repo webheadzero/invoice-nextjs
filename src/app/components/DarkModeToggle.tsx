@@ -32,7 +32,7 @@ export default function DarkModeToggle() {
     <div className="fixed top-4 right-4 z-50">
       <button
         onClick={toggleDarkMode}
-        className="p-2 rounded-lg bg-white dark:bg-gray-800 shadow-lg hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
+        className="p-2 rounded-lg bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
         title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
       >
         {darkMode ? (

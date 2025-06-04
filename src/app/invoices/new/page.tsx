@@ -8,22 +8,43 @@ interface Client {
   id?: number;
   name: string;
   company: string;
+  email: string;
+  phone: string;
+  address: string;
 }
 
-interface InvoiceItem {
-  description: string;
-  quantity: number;
-  price: number;
+interface Invoice {
+  id?: number;
+  number: string;
+  date: string;
+  dueDate: string;
+  clientId: number;
+  items: {
+    description: string;
+    quantity: number;
+    rate: number;
+    amount: number;
+  }[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  status: 'draft' | 'sent' | 'paid' | 'overdue';
+  notes?: string;
 }
 
 export default function NewInvoicePage() {
   const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
-  const [formData, setFormData] = useState({
-    invoiceNumber: '',
+  const [formData, setFormData] = useState<Invoice>({
+    number: '',
     date: new Date().toISOString().split('T')[0],
-    clientId: '',
-    items: [{ description: '', quantity: 1, price: 0 }] as InvoiceItem[],
+    dueDate: new Date().toISOString().split('T')[0],
+    clientId: 0,
+    items: [{ description: '', quantity: 1, rate: 0, amount: 0 }],
+    subtotal: 0,
+    tax: 0,
+    total: 0,
+    status: 'draft',
   });
 
   useEffect(() => {
@@ -54,7 +75,7 @@ export default function NewInvoicePage() {
       
       setFormData(prev => ({
         ...prev,
-        invoiceNumber: newInvoiceNumber,
+        number: newInvoiceNumber,
       }));
     };
 
@@ -63,10 +84,28 @@ export default function NewInvoicePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Calculate totals
+    const subtotal = formData.items.reduce((sum, item) => sum + item.amount, 0);
+    const tax = subtotal * 0.11; // 11% tax
+    
     await db.addInvoice({
-      ...formData,
-      clientId: parseInt(formData.clientId),
+      number: formData.number,
+      date: formData.date,
+      dueDate: formData.dueDate,
+      clientId: parseInt(formData.clientId.toString()),
+      items: formData.items.map(item => ({
+        description: item.description,
+        quantity: item.quantity,
+        rate: item.rate,
+        amount: item.amount
+      })),
+      subtotal,
+      tax,
+      total: subtotal + tax,
+      status: 'draft'
     });
+    
     router.push('/invoices');
   };
 
@@ -78,19 +117,30 @@ export default function NewInvoicePage() {
     }));
   };
 
-  const handleItemChange = (index: number, field: keyof InvoiceItem, value: string | number) => {
+  const handleItemChange = (index: number, field: 'description' | 'quantity' | 'rate', value: string | number) => {
+    const newItems = [...formData.items];
+    newItems[index] = {
+      ...newItems[index],
+      [field]: value,
+      amount: field === 'quantity' || field === 'rate'
+        ? Number(newItems[index].quantity) * Number(newItems[index].rate)
+        : newItems[index].amount,
+    };
+    const subtotal = newItems.reduce((sum, item) => sum + item.amount, 0);
+    const tax = subtotal * 0.11; // 11% tax
     setFormData(prev => ({
       ...prev,
-      items: prev.items.map((item, i) => 
-        i === index ? { ...item, [field]: value } : item
-      ),
+      items: newItems,
+      subtotal,
+      tax,
+      total: subtotal + tax,
     }));
   };
 
   const addItem = () => {
     setFormData(prev => ({
       ...prev,
-      items: [...prev.items, { description: '', quantity: 1, price: 0 }],
+      items: [...prev.items, { description: '', quantity: 1, rate: 0, amount: 0 }],
     }));
   };
 
@@ -99,19 +149,6 @@ export default function NewInvoicePage() {
       ...prev,
       items: prev.items.filter((_, i) => i !== index),
     }));
-  };
-
-  const calculateTotal = () => {
-    return formData.items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
   };
 
   return (
@@ -129,16 +166,16 @@ export default function NewInvoicePage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               <div>
-                <label htmlFor="invoiceNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label htmlFor="number" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Invoice Number
                 </label>
                 <div className="mt-1">
                   <input
                     type="text"
-                    name="invoiceNumber"
-                    id="invoiceNumber"
+                    name="number"
+                    id="number"
                     required
-                    value={formData.invoiceNumber}
+                    value={formData.number}
                     onChange={handleChange}
                     className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                     readOnly
@@ -157,6 +194,23 @@ export default function NewInvoicePage() {
                     id="date"
                     required
                     value={formData.date}
+                    onChange={handleChange}
+                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Due Date
+                </label>
+                <div className="mt-1">
+                  <input
+                    type="date"
+                    name="dueDate"
+                    id="dueDate"
+                    required
+                    value={formData.dueDate}
                     onChange={handleChange}
                     className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                   />
@@ -218,11 +272,12 @@ export default function NewInvoicePage() {
                     <div className="w-32">
                       <input
                         type="number"
-                        placeholder="Price"
+                        placeholder="Rate"
                         required
                         min="0"
-                        value={item.price}
-                        onChange={(e) => handleItemChange(index, 'price', parseFloat(e.target.value))}
+                        step="0.01"
+                        value={item.rate}
+                        onChange={(e) => handleItemChange(index, 'rate', parseFloat(e.target.value))}
                         className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
                       />
                     </div>
@@ -247,20 +302,25 @@ export default function NewInvoicePage() {
               </div>
             </div>
 
-            <div className="flex justify-end space-x-3">
-              <button
-                type="button"
-                onClick={() => router.back()}
-                className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
-              >
-                Create Invoice
-              </button>
+            <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+              <div className="text-lg font-medium text-gray-900 dark:text-white">
+                Total: ${formData.total.toLocaleString()}
+              </div>
+              <div className="flex space-x-3">
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  className="bg-white dark:bg-gray-700 py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
+                >
+                  Save
+                </button>
+              </div>
             </div>
           </form>
         </div>

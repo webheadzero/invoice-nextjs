@@ -18,7 +18,7 @@ export default function Home() {
       
       const totalAmount = invoices.reduce((sum, invoice) => {
         return sum + invoice.items.reduce((itemSum, item) => {
-          return itemSum + (item.quantity * item.price);
+          return itemSum + item.amount;
         }, 0);
       }, 0);
 

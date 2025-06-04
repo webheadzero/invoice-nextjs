@@ -4,18 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/db';
 
-interface Client {
-  id?: number;
-  name: string;
-  company: string;
-}
-
-interface InvoiceItem {
-  description: string;
-  quantity: number;
-  price: number;
-}
-
 interface Invoice {
   id?: number;
   number: string;
@@ -35,7 +23,16 @@ interface Invoice {
   notes?: string;
 }
 
-export default function EditInvoicePage({ params }: { params: { id: string } }) {
+interface Client {
+  id?: number;
+  name: string;
+  company: string;
+  email: string;
+  phone: string;
+  address: string;
+}
+
+export default function CreateInvoicePage() {
   const router = useRouter();
   const [clients, setClients] = useState<Client[]>([]);
   const [formData, setFormData] = useState<Invoice>({
@@ -51,28 +48,16 @@ export default function EditInvoicePage({ params }: { params: { id: string } }) 
   });
 
   useEffect(() => {
-    const loadData = async () => {
-      const [invoices, clientsData] = await Promise.all([
-        db.getInvoices(),
-        db.getClients(),
-      ]);
-      const invoice = invoices.find(i => i.id === parseInt(params.id));
-      if (invoice) {
-        setFormData(invoice);
+    const loadClients = async () => {
+      try {
+        const clientsData = await db.getClients();
+        setClients(clientsData);
+      } catch (error) {
+        console.error('Error loading clients:', error);
       }
-      setClients(clientsData);
     };
-    loadData();
-  }, [params.id]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await db.updateInvoice({
-      ...formData,
-      id: parseInt(params.id),
-    });
-    router.push('/invoices');
-  };
+    loadClients();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -116,8 +101,31 @@ export default function EditInvoicePage({ params }: { params: { id: string } }) 
     }));
   };
 
-  const calculateTotal = () => {
-    return formData.items.reduce((sum, item) => sum + (item.quantity * item.rate), 0);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Calculate totals
+    const subtotal = formData.items.reduce((sum, item) => sum + item.amount, 0);
+    const tax = subtotal * 0.11; // 11% tax
+    
+    await db.addInvoice({
+      number: formData.number,
+      date: formData.date,
+      dueDate: formData.dueDate,
+      clientId: parseInt(formData.clientId.toString()),
+      items: formData.items.map(item => ({
+        description: item.description,
+        quantity: item.quantity,
+        rate: item.rate,
+        amount: item.amount
+      })),
+      subtotal,
+      tax,
+      total: subtotal + tax,
+      status: 'draft'
+    });
+    
+    router.push('/invoices');
   };
 
   return (
@@ -125,7 +133,7 @@ export default function EditInvoicePage({ params }: { params: { id: string } }) 
       <div className="md:flex md:items-center md:justify-between mb-6">
         <div className="flex-1 min-w-0">
           <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-            Edit Invoice
+            Create Invoice
           </h2>
         </div>
       </div>
@@ -291,7 +299,7 @@ export default function EditInvoicePage({ params }: { params: { id: string } }) 
 
         <div className="flex justify-between items-center pt-4 border-t border-gray-200">
           <div className="text-lg font-medium text-gray-900">
-            Total: ${calculateTotal().toLocaleString()}
+            Total: ${formData.total.toLocaleString()}
           </div>
           <div className="flex space-x-3">
             <button

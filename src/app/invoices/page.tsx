@@ -13,15 +13,27 @@ interface Client {
 interface InvoiceItem {
   description: string;
   quantity: number;
-  price: number;
+  rate: number;
+  amount: number;
 }
 
 interface Invoice {
   id?: number;
-  invoiceNumber: string;
+  number: string;
   date: string;
+  dueDate: string;
   clientId: number;
-  items: InvoiceItem[];
+  items: {
+    description: string;
+    quantity: number;
+    rate: number;
+    amount: number;
+  }[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  status: 'draft' | 'sent' | 'paid' | 'overdue';
+  notes?: string;
 }
 
 export default function InvoicesPage() {
@@ -51,7 +63,7 @@ export default function InvoicesPage() {
   };
 
   const calculateTotal = (items: InvoiceItem[]) => {
-    return items.reduce((sum, item) => sum + (item.quantity * item.price), 0);
+    return items.reduce((sum, item) => sum + item.amount, 0);
   };
 
   const getClientName = (clientId: number) => {
@@ -88,7 +100,7 @@ export default function InvoicesPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-blue-600 dark:text-blue-400 truncate">
-                      {invoice.invoiceNumber}
+                      {invoice.number}
                     </p>
                     <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                       {getClientName(invoice.clientId)}
@@ -97,7 +109,7 @@ export default function InvoicesPage() {
                   <div className="ml-4 flex-shrink-0 flex space-x-4">
                     <div className="text-right">
                       <p className="text-sm font-medium text-gray-900 dark:text-white">
-                        {formatCurrency(calculateTotal(invoice.items))}
+                        {formatCurrency(invoice.total)}
                       </p>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         {new Date(invoice.date).toLocaleDateString('id-ID')}
