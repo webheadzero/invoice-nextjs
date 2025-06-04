@@ -1,5 +1,3 @@
-'use client';
-
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
@@ -14,6 +12,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#3b82f6" />
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Invoicely" />
+      </head>
       <body className={inter.className}>
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
           <DarkModeToggle />
@@ -22,7 +28,7 @@ export default function RootLayout({
               <div className="flex justify-between h-16">
                 <div className="flex">
                   <div className="flex-shrink-0 flex items-center">
-                    <span className="text-xl font-bold text-gray-900 dark:text-white">Invoice App</span>
+                    <span className="text-xl font-bold text-gray-900 dark:text-white">Invoicely</span>
                   </div>
                   <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
                     <Link
@@ -118,10 +124,28 @@ export default function RootLayout({
 
           <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
             <div className="px-4 py-6 sm:px-0">
-        {children}
+              {children}
             </div>
           </main>
         </div>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(
+                    function(registration) {
+                      console.log('ServiceWorker registration successful');
+                    },
+                    function(err) {
+                      console.log('ServiceWorker registration failed: ', err);
+                    }
+                  );
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );
