@@ -102,154 +102,129 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="sm:flex sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-          <p className="mt-2 text-sm text-gray-700">
-            Manage your company information and bank accounts.
-          </p>
+    <div className="max-w-7xl mx-auto">
+      <div className="md:flex md:items-center md:justify-between mb-6">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-2xl font-bold leading-7 text-gray-900 dark:text-white sm:text-3xl sm:truncate">
+            Settings
+          </h2>
         </div>
       </div>
 
-      <div className="bg-white shadow sm:rounded-lg">
+      <div className="bg-white dark:bg-gray-800 shadow sm:rounded-lg">
         <div className="px-4 py-5 sm:p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-6">
-              <div>
-                <label htmlFor="companyName" className="block text-sm font-medium text-gray-700">
-                  Company Name
-                </label>
-                <div className="mt-1">
-                  <input
-                    type="text"
-                    name="companyName"
-                    id="companyName"
-                    required
-                    value={settings.companyName}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email
-                </label>
-                <div className="mt-1">
-                  <input
-                    type="email"
-                    name="email"
-                    id="email"
-                    required
-                    value={settings.email}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-medium text-gray-900">Bank Accounts</h3>
-                  <button
-                    type="button"
-                    onClick={addBankAccount}
-                    className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    Add Bank Account
-                  </button>
-                </div>
-
-                {settings.bankAccounts.map((account, index) => (
-                  <div key={index} className="grid grid-cols-1 gap-4 sm:grid-cols-3 items-end">
-                    <div>
-                      <label htmlFor={`bankName-${index}`} className="block text-sm font-medium text-gray-700">
-                        Bank Name
-                      </label>
-                      <div className="mt-1">
-                        <input
-                          type="text"
-                          id={`bankName-${index}`}
-                          required
-                          value={account.bankName}
-                          onChange={(e) => handleBankAccountChange(index, 'bankName', e.target.value)}
-                          className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label htmlFor={`accountNumber-${index}`} className="block text-sm font-medium text-gray-700">
-                        Account Number
-                      </label>
-                      <div className="mt-1">
-                        <input
-                          type="text"
-                          id={`accountNumber-${index}`}
-                          required
-                          value={account.accountNumber}
-                          onChange={(e) => handleBankAccountChange(index, 'accountNumber', e.target.value)}
-                          className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex items-end space-x-2">
-                      <div className="flex-1">
-                        <label htmlFor={`accountHolder-${index}`} className="block text-sm font-medium text-gray-700">
-                          Account Holder
-                        </label>
-                        <div className="mt-1">
-                          <input
-                            type="text"
-                            id={`accountHolder-${index}`}
-                            required
-                            value={account.accountHolder}
-                            onChange={(e) => handleBankAccountChange(index, 'accountHolder', e.target.value)}
-                            className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                          />
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => removeBankAccount(index)}
-                        className="inline-flex items-center p-2 border border-transparent text-sm font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                      >
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+            <div>
+              <label htmlFor="companyName" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Company Name
+              </label>
+              <div className="mt-1">
+                <input
+                  type="text"
+                  name="companyName"
+                  id="companyName"
+                  value={settings.companyName}
+                  onChange={(e) => setSettings({ ...settings, companyName: e.target.value })}
+                  className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
               </div>
             </div>
 
-            <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-              <div className="flex space-x-3">
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Email
+              </label>
+              <div className="mt-1">
+                <input
+                  type="email"
+                  name="email"
+                  id="email"
+                  value={settings.email}
+                  onChange={(e) => setSettings({ ...settings, email: e.target.value })}
+                  className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Bank Accounts
+              </label>
+              <div className="mt-2 space-y-4">
+                {settings.bankAccounts.map((account, index) => (
+                  <div key={index} className="flex space-x-4">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        placeholder="Bank Name"
+                        value={account.bankName}
+                        onChange={(e) => {
+                          const newAccounts = [...settings.bankAccounts];
+                          newAccounts[index] = { ...account, bankName: e.target.value };
+                          setSettings({ ...settings, bankAccounts: newAccounts });
+                        }}
+                        className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        placeholder="Account Number"
+                        value={account.accountNumber}
+                        onChange={(e) => {
+                          const newAccounts = [...settings.bankAccounts];
+                          newAccounts[index] = { ...account, accountNumber: e.target.value };
+                          setSettings({ ...settings, bankAccounts: newAccounts });
+                        }}
+                        className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        placeholder="Account Name"
+                        value={account.accountName}
+                        onChange={(e) => {
+                          const newAccounts = [...settings.bankAccounts];
+                          newAccounts[index] = { ...account, accountName: e.target.value };
+                          setSettings({ ...settings, bankAccounts: newAccounts });
+                        }}
+                        className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newAccounts = settings.bankAccounts.filter((_, i) => i !== index);
+                        setSettings({ ...settings, bankAccounts: newAccounts });
+                      }}
+                      className="inline-flex items-center p-2 border border-transparent rounded-full shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-gray-900"
+                    >
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
                 <button
                   type="button"
-                  onClick={handleBackup}
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                  onClick={() => {
+                    setSettings({
+                      ...settings,
+                      bankAccounts: [...settings.bankAccounts, { bankName: '', accountNumber: '', accountName: '' }]
+                    });
+                  }}
+                  className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
                 >
-                  Backup Data
+                  Add Bank Account
                 </button>
-                <label className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer">
-                  Restore Data
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={handleRestore}
-                    className="hidden"
-                  />
-                </label>
               </div>
+            </div>
+
+            <div className="flex justify-end">
               <button
                 type="submit"
-                className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
               >
                 Save Settings
               </button>
