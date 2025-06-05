@@ -30,9 +30,19 @@ export default function InvoicesPage() {
       try {
         setIsLoading(true);
         const data = await db.getInvoices();
+        // Sort invoices by date (newest first) and then by invoice number
+        const sortedInvoices = data.sort((a, b) => {
+          const dateA = new Date(a.date).getTime();
+          const dateB = new Date(b.date).getTime();
+          if (dateB !== dateA) {
+            return dateB - dateA; // Sort by date first (newest first)
+          }
+          // If dates are equal, sort by invoice number
+          return b.number.localeCompare(a.number);
+        });
         // Ensure client data is available
         const invoicesWithClient = await Promise.all(
-          data.map(async (invoice) => {
+          sortedInvoices.map(async (invoice) => {
             const client = await db.getClient(invoice.clientId);
             return {
               ...invoice,

@@ -123,6 +123,30 @@ export default function NewInvoicePage() {
     generateInvoiceNumber();
   }, []);
 
+  useEffect(() => {
+    // Check for duplicate data
+    const duplicateData = sessionStorage.getItem('duplicateInvoiceData');
+    if (duplicateData) {
+      const data = JSON.parse(duplicateData);
+      
+      // Set form data with duplicate data
+      setFormData(prev => ({
+        ...prev,
+        clientId: data.clientId,
+        items: data.items,
+        subtotal: data.subtotal,
+        discount: data.discount,
+        total: data.total,
+        notes: data.notes,
+        date: data.date,
+        dueDate: data.dueDate
+      }));
+      
+      // Clear the duplicate data
+      sessionStorage.removeItem('duplicateInvoiceData');
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {

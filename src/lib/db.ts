@@ -7,7 +7,7 @@ interface BankAccount {
 }
 
 interface SettingsRecord {
-  key: string;
+  id: number;
   companyName: string;
   email: string;
   companyAddress: string;
@@ -17,23 +17,27 @@ interface SettingsRecord {
   currency: string;
 }
 
+interface InvoiceItem {
+  id?: number;
+  invoiceId: number;
+  description: string;
+  quantity: number;
+  rate: number;
+  amount: number;
+}
+
 interface Invoice {
   id?: number;
   number: string;
   date: string;
   dueDate: string;
   clientId: number;
-  items: {
-    description: string;
-    quantity: number;
-    rate: number;
-    amount: number;
-  }[];
+  items: InvoiceItem[];
+  subtotal: number;
+  discount: number;
   total: number;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
   notes?: string;
-  subtotal: number;
-  discount: number;
 }
 
 interface InvoiceDB extends DBSchema {
@@ -47,20 +51,33 @@ interface InvoiceDB extends DBSchema {
       phone: string;
       address: string;
     };
-    indexes: { 'by-name': string };
+    indexes: {
+      'by-name': string;
+    };
   };
   invoices: {
     key: number;
     value: Invoice;
-    indexes: { 'by-number': string; 'by-client': number; 'by-date': string };
+    indexes: {
+      'by-number': string;
+      'by-client': number;
+      'by-status': string;
+    };
+  };
+  invoice_items: {
+    key: number;
+    value: InvoiceItem;
+    indexes: {
+      'by-invoice': number;
+    };
   };
   settings: {
-    key: string;
+    key: number;
     value: SettingsRecord;
   };
 }
 
-class DatabaseService {
+export class DatabaseService {
   private db: IDBPDatabase<InvoiceDB> | null = null;
   private static instance: DatabaseService;
 
@@ -74,50 +91,49 @@ class DatabaseService {
   }
 
   async init() {
-    if (!this.db) {
-      console.log('Initializing database...');
-      this.db = await openDB<InvoiceDB>('invoice-app', 1, {
-        upgrade(db) {
-          console.log('Upgrading database...');
-          // Create clients store
-          if (!db.objectStoreNames.contains('clients')) {
-            console.log('Creating clients store...');
-            const clientStore = db.createObjectStore('clients', { keyPath: 'id', autoIncrement: true });
-            clientStore.createIndex('by-name', 'name');
-          }
+    if (this.db) return this.db;
 
-          // Create invoices store
-          if (!db.objectStoreNames.contains('invoices')) {
-            console.log('Creating invoices store...');
-            const invoiceStore = db.createObjectStore('invoices', { keyPath: 'id', autoIncrement: true });
-            invoiceStore.createIndex('by-number', 'number');
-            invoiceStore.createIndex('by-client', 'clientId');
-            invoiceStore.createIndex('by-date', 'date');
-          }
+    this.db = await openDB<InvoiceDB>('invoice-db', 1, {
+      upgrade(db) {
+        // Create clients store
+        if (!db.objectStoreNames.contains('clients')) {
+          const clientStore = db.createObjectStore('clients', { keyPath: 'id', autoIncrement: true });
+          clientStore.createIndex('by-name', 'name', { unique: false });
+        }
 
-          // Create settings store
-          if (!db.objectStoreNames.contains('settings')) {
-            console.log('Creating settings store...');
-            const settingsStore = db.createObjectStore('settings', { keyPath: 'key' });
-            // Initialize default settings
-            const defaultSettings: SettingsRecord = {
-              key: 'company',
-              companyName: '',
-              email: '',
-              companyAddress: '',
-              companyPhone: '',
-              companyWebsite: '',
-              bankAccounts: [],
-              currency: 'Rp'
-            };
-            settingsStore.add(defaultSettings);
-          }
-        },
-      });
+        // Create invoices store
+        if (!db.objectStoreNames.contains('invoices')) {
+          const invoiceStore = db.createObjectStore('invoices', { keyPath: 'id', autoIncrement: true });
+          invoiceStore.createIndex('by-number', 'number', { unique: true });
+          invoiceStore.createIndex('by-client', 'clientId', { unique: false });
+          invoiceStore.createIndex('by-status', 'status', { unique: false });
+        }
 
-      // Initialize with sample data if empty
-      // await this.initializeSampleData();
-    }
+        // Create invoice items store
+        if (!db.objectStoreNames.contains('invoice_items')) {
+          const itemStore = db.createObjectStore('invoice_items', { keyPath: 'id', autoIncrement: true });
+          itemStore.createIndex('by-invoice', 'invoiceId', { unique: false });
+        }
+
+        // Create settings store
+        if (!db.objectStoreNames.contains('settings')) {
+          const settingsStore = db.createObjectStore('settings', { keyPath: 'id' });
+          // Initialize default settings
+          const defaultSettings: SettingsRecord = {
+            id: 1,
+            companyName: '',
+            email: '',
+            companyAddress: '',
+            companyPhone: '',
+            companyWebsite: '',
+            bankAccounts: [],
+            currency: 'Rp'
+          };
+          settingsStore.add(defaultSettings);
+        }
+      },
+    });
+
     return this.db;
   }
 
@@ -151,7 +167,7 @@ class DatabaseService {
     if (!settings) {
       console.log('Adding sample settings...');
       const defaultSettings: SettingsRecord = {
-        key: 'company',
+        id: 1,
         companyName: '',
         email: '',
         companyAddress: '',
@@ -263,17 +279,17 @@ class DatabaseService {
   // Settings operations
   async getSettings(): Promise<SettingsRecord> {
     const db = await this.init();
-    const settings = await db.get('settings', 'company');
+    const settings = await db.get('settings', 1);
     if (!settings) {
       throw new Error('Settings not found');
     }
     return settings;
   }
 
-  async updateSettings(settings: Omit<SettingsRecord, 'key'>): Promise<SettingsRecord> {
+  async updateSettings(settings: Omit<SettingsRecord, 'id'>): Promise<SettingsRecord> {
     const db = await this.init();
     const updatedSettings: SettingsRecord = {
-      key: 'company',
+      id: 1,
       ...settings
     };
     await db.put('settings', updatedSettings);
@@ -315,7 +331,7 @@ class DatabaseService {
 
     if (backup.settings) {
       const updatedSettings: SettingsRecord = {
-        key: 'company',
+        id: 1,
         ...backup.settings
       };
       await db.put('settings', updatedSettings);
@@ -362,6 +378,60 @@ class DatabaseService {
       return true;
     } catch (error) {
       console.error('Error clearing database:', error);
+      throw error;
+    }
+  }
+
+  async getLastInvoice() {
+    try {
+      const db = await this.init();
+      const tx = db.transaction('invoices', 'readonly');
+      const store = tx.objectStore('invoices');
+      const invoices = await store.getAll();
+      return invoices.sort((a, b) => {
+        const numA = parseInt(a.number.replace('INV-', ''));
+        const numB = parseInt(b.number.replace('INV-', ''));
+        return numB - numA;
+      })[0];
+    } catch (error) {
+      console.error('Error getting last invoice:', error);
+      return null;
+    }
+  }
+
+  async createInvoice(invoice: Omit<Invoice, 'id'>) {
+    try {
+      const db = await this.init();
+      const tx = db.transaction(['invoices', 'invoice_items'], 'readwrite');
+      const invoiceStore = tx.objectStore('invoices');
+      const itemStore = tx.objectStore('invoice_items');
+
+      // Generate new ID
+      const invoices = await invoiceStore.getAll();
+      const newId = Math.max(0, ...invoices.map(i => i.id || 0)) + 1;
+
+      // Create new invoice with ID
+      const newInvoice = {
+        ...invoice,
+        id: newId
+      };
+
+      // Save invoice
+      await invoiceStore.add(newInvoice);
+      
+      // Save invoice items
+      for (const item of invoice.items) {
+        await itemStore.add({
+          ...item,
+          id: undefined, // Let IndexedDB generate the ID
+          invoiceId: newId
+        });
+      }
+
+      await tx.done;
+      return this.getInvoice(newId);
+    } catch (error) {
+      console.error('Error creating invoice:', error);
       throw error;
     }
   }
