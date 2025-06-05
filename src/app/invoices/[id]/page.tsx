@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { db } from '@/lib/db';
 import { usePDF } from 'react-to-pdf';
 import '@/app/print.css';
+import { formatCurrency } from '@/lib/utils';
 
 interface Invoice {
   id?: number;
@@ -119,15 +120,6 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
     }
   }, [searchParams, toPDF]);
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
-
   const handleStatusChange = async (newStatus: Invoice['status']) => {
     if (!invoice) return;
 
@@ -150,6 +142,21 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
       } catch (error) {
         console.error('Error deleting invoice:', error);
       }
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'draft':
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
+      case 'sent':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+      case 'paid':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+      case 'overdue':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     }
   };
 
@@ -195,6 +202,19 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
           </h2>
         </div>
         <div className="mt-4 flex md:mt-0 md:ml-4 space-x-3">
+          <div className="flex items-center space-x-2">
+            <span className="text-sm text-gray-500 dark:text-gray-400">Status:</span>
+            <select
+              value={invoice.status}
+              onChange={(e) => handleStatusChange(e.target.value as Invoice['status'])}
+              className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+            >
+              <option value="draft">Draft</option>
+              <option value="sent">Sent</option>
+              <option value="paid">Paid</option>
+              <option value="overdue">Overdue</option>
+            </select>
+          </div>
           <button
             type="button"
             onClick={() => router.push(`/invoices/${params.id}?print=true`)}
