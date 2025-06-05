@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/db';
+import Select from 'react-select';
 
 interface Client {
   id?: number;
@@ -11,6 +12,20 @@ interface Client {
   email: string;
   phone: string;
   address: string;
+}
+
+interface Settings {
+  companyName: string;
+  email: string;
+  companyAddress: string;
+  companyPhone: string;
+  companyWebsite: string;
+  bankAccounts: {
+    bankName: string;
+    accountNumber: string;
+    accountHolder: string;
+  }[];
+  currency: string;
 }
 
 interface Invoice {
@@ -30,10 +45,6 @@ interface Invoice {
   total: number;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
   notes?: string;
-}
-
-interface Settings {
-  currency: string;
 }
 
 export default function NewInvoicePage() {
@@ -115,72 +126,27 @@ export default function NewInvoicePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      console.log('Submitting invoice:', formData);
-      
-      // Calculate subtotal and total
-      const subtotal = formData.items.reduce((sum, item) => sum + item.amount, 0);
-      const total = subtotal - formData.discount;
-      
-      const newInvoice = {
-        number: formData.number,
-        date: formData.date,
-        dueDate: formData.dueDate,
-        clientId: parseInt(formData.clientId.toString()),
-        items: formData.items.map(item => ({
-          description: item.description,
-          quantity: item.quantity,
-          rate: item.rate,
-          amount: item.amount
-        })),
-        subtotal,
-        discount: formData.discount,
-        total,
-        status: 'draft' as const
-      };
-      
-      console.log('Adding invoice:', newInvoice);
-      await db.addInvoice(newInvoice);
-      console.log('Invoice added successfully');
-      
-      router.push('/invoices');
+      const invoice = await db.addInvoice(formData);
+      router.push(`/invoices/${invoice.id}`);
     } catch (error) {
-      console.error('Error submitting invoice:', error);
+      console.error('Error creating invoice:', error);
+      alert('Error creating invoice. Please try again.');
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => {
-      const newData = {
-        ...prev,
-        [name]: value,
-      };
-      
-      // Recalculate totals when discount changes
-      if (name === 'discount') {
-        const subtotal = newData.items.reduce((sum, item) => sum + item.amount, 0);
-        newData.subtotal = subtotal;
-        newData.total = subtotal - Number(value);
-      }
-      
-      return newData;
-    });
-  };
-
-  const handleItemChange = (index: number, field: 'description' | 'quantity' | 'rate', value: string | number) => {
+  const handleItemChange = (index: number, field: string, value: string | number) => {
     const newItems = [...formData.items];
-    const quantity = field === 'quantity' ? Number(value) : Number(newItems[index].quantity);
-    const rate = field === 'rate' ? Number(value) : Number(newItems[index].rate);
-    
     newItems[index] = {
       ...newItems[index],
       [field]: value,
-      amount: quantity * rate
+      amount: field === 'quantity' || field === 'rate'
+        ? Number(newItems[index].quantity) * Number(newItems[index].rate)
+        : newItems[index].amount
     };
 
     const subtotal = newItems.reduce((sum, item) => sum + item.amount, 0);
     const total = subtotal - formData.discount;
-    
+
     setFormData(prev => ({
       ...prev,
       items: newItems,
@@ -192,42 +158,62 @@ export default function NewInvoicePage() {
   const addItem = () => {
     setFormData(prev => ({
       ...prev,
-      items: [...prev.items, { description: '', quantity: 1, rate: 0, amount: 0 }],
+      items: [...prev.items, { description: '', quantity: 1, rate: 0, amount: 0 }]
     }));
   };
 
   const removeItem = (index: number) => {
-    setFormData(prev => {
-      const newItems = prev.items.filter((_, i) => i !== index);
-      const subtotal = newItems.reduce((sum, item) => sum + item.amount, 0);
-      const total = subtotal - prev.discount;
-      
-      return {
-        ...prev,
-        items: newItems,
-        subtotal,
-        total
-      };
-    });
+    const newItems = formData.items.filter((_, i) => i !== index);
+    const subtotal = newItems.reduce((sum, item) => sum + item.amount, 0);
+    const total = subtotal - formData.discount;
+
+    setFormData(prev => ({
+      ...prev,
+      items: newItems,
+      subtotal,
+      total
+    }));
   };
 
-  const formatCurrency = (amount: number) => {
-    if (!settings) return amount.toString();
-    
-    const currencyMap: { [key: string]: string } = {
-      'Rp': 'IDR',
-      'USD': 'USD',
-      'EUR': 'EUR',
-      'GBP': 'GBP',
-      'SGD': 'SGD'
-    };
-    
-    return new Intl.NumberFormat('id-ID', {
-      style: 'currency',
-      currency: currencyMap[settings.currency] || 'IDR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
+  const handleDiscountChange = (value: string) => {
+    const discount = Number(value) || 0;
+    setFormData(prev => ({
+      ...prev,
+      discount,
+      total: prev.subtotal - discount
+    }));
+  };
+
+  // Format clients for react-select
+  const clientOptions = clients.map(client => ({
+    value: client.id,
+    label: `${client.name} - ${client.company}`,
+    client: client
+  }));
+
+  // Custom styles for react-select
+  const customStyles = {
+    control: (base: any) => ({
+      ...base,
+      backgroundColor: 'white',
+      borderColor: '#e5e7eb',
+      '&:hover': {
+        borderColor: '#d1d5db'
+      }
+    }),
+    menu: (base: any) => ({
+      ...base,
+      backgroundColor: 'white',
+      zIndex: 9999
+    }),
+    option: (base: any, state: any) => ({
+      ...base,
+      backgroundColor: state.isFocused ? '#f3f4f6' : 'white',
+      color: '#1f2937',
+      '&:hover': {
+        backgroundColor: '#f3f4f6'
+      }
+    })
   };
 
   return (
@@ -240,195 +226,187 @@ export default function NewInvoicePage() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 shadow sm:rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-white dark:bg-gray-800 shadow sm:rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              <div>
+                <label htmlFor="client" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Client
+                </label>
+                <Select
+                  id="client"
+                  options={clientOptions}
+                  value={clientOptions.find(option => option.value === formData.clientId)}
+                  onChange={(option: any) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      clientId: option.value
+                    }));
+                  }}
+                  styles={customStyles}
+                  placeholder="Search client..."
+                  isSearchable
+                  className="mt-1"
+                  classNamePrefix="select"
+                />
+              </div>
+
               <div>
                 <label htmlFor="number" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Invoice Number
                 </label>
-                <div className="mt-1">
-                  <input
-                    type="text"
-                    name="number"
-                    id="number"
-                    required
-                    value={formData.number}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                    readOnly
-                  />
-                </div>
+                <input
+                  type="text"
+                  id="number"
+                  value={formData.number}
+                  readOnly
+                  className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                  required
+                />
               </div>
 
               <div>
                 <label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Date
                 </label>
-                <div className="mt-1">
-                  <input
-                    type="date"
-                    name="date"
-                    id="date"
-                    required
-                    value={formData.date}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
+                <input
+                  type="date"
+                  id="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                  required
+                />
               </div>
 
               <div>
                 <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Due Date
                 </label>
-                <div className="mt-1">
-                  <input
-                    type="date"
-                    name="dueDate"
-                    id="dueDate"
-                    required
-                    value={formData.dueDate}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label htmlFor="clientId" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Client
-                </label>
-                <div className="mt-1">
-                  <select
-                    id="clientId"
-                    name="clientId"
-                    required
-                    value={formData.clientId}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="">Select a client</option>
-                    {clients.map((client) => (
-                      <option key={client.id} value={client.id}>
-                        {client.name} - {client.company}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <input
+                  type="date"
+                  id="dueDate"
+                  value={formData.dueDate}
+                  onChange={(e) => setFormData(prev => ({ ...prev, dueDate: e.target.value }))}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                  required
+                />
               </div>
             </div>
+          </div>
+        </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Items
-              </label>
-              <div className="space-y-4">
-                {formData.items.map((item, index) => (
-                  <div key={index} className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        placeholder="Description"
-                        required
-                        value={item.description}
-                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                        className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                      />
-                    </div>
-                    <div className="flex space-x-4 items-center">
-                      <div className="w-32">
-                        <input
-                          type="number"
-                          placeholder="Quantity"
-                          required
-                          min="1"
-                          value={item.quantity}
-                          onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value))}
-                          className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                        />
-                      </div>
-                      <div className="w-32">
-                        <input
-                          type="number"
-                          placeholder="Rate"
-                          required
-                          min="0"
-                          step="0.01"
-                          value={item.rate}
-                          onChange={(e) => handleItemChange(index, 'rate', parseFloat(e.target.value))}
-                          className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeItem(index)}
-                        className="inline-flex items-center p-2 border border-transparent rounded-full shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-gray-900"
-                      >
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+        <div className="bg-white dark:bg-gray-800 shadow sm:rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white">Items</h3>
                 <button
                   type="button"
                   onClick={addItem}
-                  className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
+                  className="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
                 >
                   Add Item
                 </button>
               </div>
-            </div>
 
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm text-gray-500 dark:text-gray-400">Subtotal:</span>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  {formatCurrency(formData.subtotal)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center space-x-2">
-                  <label htmlFor="discount" className="text-sm text-gray-500 dark:text-gray-400">
-                    Discount:
+              {formData.items.map((item, index) => (
+                <div key={index} className="grid grid-cols-12 gap-4 items-start">
+                  <div className="col-span-5">
+                    <input
+                      type="text"
+                      value={item.description}
+                      onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                      placeholder="Description"
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                      required
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <input
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) => handleItemChange(index, 'quantity', Number(e.target.value))}
+                      placeholder="Qty"
+                      min="1"
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                      required
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <input
+                      type="number"
+                      value={item.rate}
+                      onChange={(e) => handleItemChange(index, 'rate', Number(e.target.value))}
+                      placeholder="Rate"
+                      min="0"
+                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                      required
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <input
+                      type="number"
+                      value={item.amount}
+                      readOnly
+                      className="block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <button
+                      type="button"
+                      onClick={() => removeItem(index)}
+                      className="inline-flex items-center p-1.5 border border-transparent rounded-md text-red-600 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-gray-900"
+                    >
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              <div className="flex space-x-4 pt-4">
+                <div className="w-48">
+                  <label htmlFor="discount" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Discount
                   </label>
                   <input
                     type="number"
-                    name="discount"
                     id="discount"
-                    min="0"
-                    step="0.01"
                     value={formData.discount}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-32 sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
+                    onChange={(e) => handleDiscountChange(e.target.value)}
+                    min="0"
+                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
                   />
                 </div>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  {formatCurrency(formData.discount)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
-                <span className="text-lg font-medium text-gray-900 dark:text-white">Total:</span>
-                <span className="text-lg font-medium text-gray-900 dark:text-white">
-                  {formatCurrency(formData.total)}
-                </span>
+                <div className="w-48">
+                  <label htmlFor="total" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Total
+                  </label>
+                  <input
+                    type="number"
+                    id="total"
+                    value={formData.total}
+                    readOnly
+                    className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                  />
+                </div>
               </div>
             </div>
-
-            <div className="flex justify-end">
-              <button
-                type="submit"
-                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
-              >
-                Save
-              </button>
-            </div>
-          </form>
+          </div>
         </div>
-      </div>
+
+        <div className="flex justify-end">
+          <button
+            type="submit"
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
+          >
+            Create Invoice
+          </button>
+        </div>
+      </form>
     </div>
   );
-} 
+}
