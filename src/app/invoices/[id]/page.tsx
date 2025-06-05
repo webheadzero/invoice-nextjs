@@ -205,7 +205,7 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
             </svg>
             <span className='hidden sm:block'>Print</span>
           </button>
-          <button
+          {/* <button
             type="button"
             onClick={() => router.push(`/invoices/${params.id}?download=true`)}
             className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
@@ -214,7 +214,7 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
             <span className='hidden sm:block'>Download PDF</span>
-          </button>
+          </button> */}
           <button
             type="button"
             onClick={() => router.push(`/invoices/${invoice.id}/edit`)}
@@ -370,21 +370,6 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
               </div>
             </div>
           )}
-
-          <div className="mt-8 flex justify-end space-x-3">
-            <button
-              onClick={() => router.push('/invoices')}
-              className="bg-white dark:bg-gray-700 py-2 px-4 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
-            >
-              Back
-            </button>
-            <button
-              onClick={() => router.push(`/invoices/${invoice.id}/edit`)}
-              className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
-            >
-              Edit
-            </button>
-          </div>
         </div>
       </div>
     </div>

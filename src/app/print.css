@@ -1,4 +1,12 @@
 @media print {
+  /* Reset all styles first */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Hide everything except print content */
   body * {
     visibility: hidden;
   }
@@ -8,6 +16,7 @@
     visibility: visible;
   }
   
+  /* Force light mode for print content */
   .print-content {
     position: absolute;
     left: 0;
@@ -15,24 +24,35 @@
     width: 100%;
     background-color: white !important;
     color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
+  /* Override dark mode styles */
+  .dark .print-content,
+  .dark .print-content *,
+  .print-content,
+  .print-content * {
+    background-color: white !important;
+    color: black !important;
+  }
+
+  /* Hide non-printable elements */
   .no-print {
     display: none !important;
   }
 
-  .print-content {
-    box-shadow: none !important;
-  }
-
+  /* Table styles */
   .print-content table {
     width: 100%;
     border-collapse: collapse;
+    margin: 1rem 0;
+    background-color: white !important;
   }
 
   .print-content th,
   .print-content td {
-    border: 1px solid #ddd;
+    border: 1px solid #000 !important;
     padding: 8px;
     background-color: white !important;
     color: black !important;
@@ -40,88 +60,231 @@
 
   .print-content th {
     background-color: #f8f9fa !important;
-    color: #374151 !important;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+    color: #000 !important;
+    font-weight: bold;
   }
 
   .print-content tr {
     background-color: white !important;
   }
 
-  .print-content tr:hover {
-    background-color: #f9fafb !important;
-  }
-
-  body {
-    background: white;
-  }
-
-  .print\:hidden {
-    display: none !important;
-  }
-
-  .bg-white {
-    background-color: white !important;
-  }
-
-  .text-gray-900 {
-    color: black !important;
-  }
-
-  .text-gray-500 {
-    color: #666 !important;
-  }
-
-  .bg-gray-50 {
-    background-color: #f9fafb !important;
-  }
-
-  .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
-    border-color: #e5e7eb !important;
-  }
-
-  .border-gray-200 {
-    border-color: #e5e7eb !important;
-  }
-
-  .shadow {
+  /* Remove all shadows and rounded corners */
+  .print-content * {
     box-shadow: none !important;
-  }
-
-  .rounded-lg {
     border-radius: 0 !important;
   }
 
-  /* Ensure table borders are visible */
-  table {
-    border-collapse: collapse !important;
+  /* Ensure borders are visible */
+  .print-content .border,
+  .print-content .border-2 {
+    border: 1px solid #000 !important;
   }
 
-  th, td {
-    border: 1px solid #e5e7eb !important;
+  /* Ensure text is readable */
+  .print-content h1,
+  .print-content h2,
+  .print-content h3,
+  .print-content h4,
+  .print-content h5,
+  .print-content h6 {
+    color: #000 !important;
+    font-weight: bold;
   }
 
-  /* Ensure text is black and readable */
-  * {
-    color: black !important;
-    text-shadow: none !important;
-    box-shadow: none !important;
-  }
-
-  /* Ensure background colors are white */
-  * {
-    background-color: white !important;
+  .print-content p,
+  .print-content span,
+  .print-content div {
+    color: #000 !important;
   }
 
   /* Ensure links are black and not underlined */
-  a {
-    color: black !important;
+  .print-content a {
+    color: #000 !important;
     text-decoration: none !important;
   }
 
   /* Ensure page breaks don't occur in the middle of elements */
-  table, tr, td, th {
+  .print-content table,
+  .print-content tr,
+  .print-content td,
+  .print-content th {
     page-break-inside: avoid;
+  }
+
+  /* Ensure proper spacing */
+  .print-content .space-y-4 > * + * {
+    margin-top: 1rem !important;
+  }
+
+  .print-content .space-y-2 > * + * {
+    margin-top: 0.5rem !important;
+  }
+
+  /* Ensure proper margins */
+  .print-content .my-4 {
+    margin-top: 1rem !important;
+    margin-bottom: 1rem !important;
+  }
+
+  .print-content .my-2 {
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+  }
+
+  /* Ensure proper padding */
+  .print-content .p-4 {
+    padding: 1rem !important;
+  }
+
+  .print-content .p-2 {
+    padding: 0.5rem !important;
+  }
+
+  /* Override any dark mode specific classes */
+  .dark\:bg-gray-800,
+  .dark\:bg-gray-900,
+  .dark\:text-white,
+  .dark\:text-gray-400,
+  .dark\:border-gray-700 {
+    background-color: white !important;
+    color: black !important;
+    border-color: #000 !important;
+  }
+
+  /* Force light mode for specific elements */
+  .print-content .bg-gray-800,
+  .print-content .bg-gray-900,
+  .print-content .text-white,
+  .print-content .text-gray-400,
+  .print-content .border-gray-700 {
+    background-color: white !important;
+    color: black !important;
+    border-color: #000 !important;
+  }
+
+  /* Additional overrides for specific elements */
+  .print-content .bg-white {
+    background-color: white !important;
+  }
+
+  .print-content .text-gray-900 {
+    color: black !important;
+  }
+
+  .print-content .text-gray-500 {
+    color: #666 !important;
+  }
+
+  .print-content .bg-gray-50 {
+    background-color: #f9fafb !important;
+  }
+
+  .print-content .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+    border-color: #e5e7eb !important;
+  }
+
+  .print-content .border-gray-200 {
+    border-color: #e5e7eb !important;
+  }
+
+  /* Ensure all text is black */
+  .print-content * {
+    color: black !important;
+  }
+
+  /* Ensure all backgrounds are white */
+  .print-content * {
+    background-color: white !important;
+  }
+
+  /* Ensure all borders are visible */
+  .print-content * {
+    border-color: #000 !important;
+  }
+
+  /* Remove any dark mode styles */
+  .dark .print-content * {
+    background-color: white !important;
+    color: black !important;
+    border-color: #000 !important;
+  }
+
+  /* Ensure proper text contrast */
+  .print-content .text-gray-400,
+  .print-content .text-gray-500,
+  .print-content .text-gray-600,
+  .print-content .text-gray-700,
+  .print-content .text-gray-800,
+  .print-content .text-gray-900 {
+    color: black !important;
+  }
+
+  /* Ensure proper background contrast */
+  .print-content .bg-gray-100,
+  .print-content .bg-gray-200,
+  .print-content .bg-gray-300,
+  .print-content .bg-gray-400,
+  .print-content .bg-gray-500,
+  .print-content .bg-gray-600,
+  .print-content .bg-gray-700,
+  .print-content .bg-gray-800,
+  .print-content .bg-gray-900 {
+    background-color: white !important;
+  }
+
+  /* Force light mode for all elements */
+  body {
+    background-color: white !important;
+  }
+
+  /* Override dark mode classes */
+  [class*="dark:"] {
+    background-color: white !important;
+    color: black !important;
+    border-color: #000 !important;
+  }
+
+  /* Override specific dark mode classes */
+  .dark\:bg-gray-800,
+  .dark\:bg-gray-900,
+  .dark\:text-white,
+  .dark\:text-gray-400,
+  .dark\:border-gray-700,
+  .dark\:bg-gray-700,
+  .dark\:bg-gray-600,
+  .dark\:bg-gray-500,
+  .dark\:bg-gray-400,
+  .dark\:bg-gray-300,
+  .dark\:bg-gray-200,
+  .dark\:bg-gray-100 {
+    background-color: white !important;
+    color: black !important;
+    border-color: #000 !important;
+  }
+
+  /* Override text colors in dark mode */
+  .dark\:text-gray-100,
+  .dark\:text-gray-200,
+  .dark\:text-gray-300,
+  .dark\:text-gray-400,
+  .dark\:text-gray-500,
+  .dark\:text-gray-600,
+  .dark\:text-gray-700,
+  .dark\:text-gray-800,
+  .dark\:text-gray-900 {
+    color: black !important;
+  }
+
+  /* Override border colors in dark mode */
+  .dark\:border-gray-100,
+  .dark\:border-gray-200,
+  .dark\:border-gray-300,
+  .dark\:border-gray-400,
+  .dark\:border-gray-500,
+  .dark\:border-gray-600,
+  .dark\:border-gray-700,
+  .dark\:border-gray-800,
+  .dark\:border-gray-900 {
+    border-color: #000 !important;
   }
 } 
