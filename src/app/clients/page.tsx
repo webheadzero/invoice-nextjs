@@ -68,7 +68,7 @@ export default function ClientsPage() {
                     </p>
                   </div>
                   <div className="ml-4 flex-shrink-0 flex space-x-4">
-                    <div className="text-right">
+                    <div className="text-right hidden md:block">
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         {client.email}
                       </p>
