@@ -6,7 +6,7 @@ import { db } from '@/lib/db';
 import { formatCurrency } from '@/lib/utils';
 
 interface Invoice {
-  id: number;
+  id?: number;
   number: string;
   date: string;
   dueDate: string;
@@ -17,6 +17,16 @@ interface Invoice {
   };
   total: number;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
+  items: {
+    id?: number;
+    invoiceId: number;
+    description: string;
+    quantity: number;
+    rate: number;
+    amount: number;
+  }[];
+  subtotal: number;
+  discount: number;
 }
 
 export default function InvoicesPage() {

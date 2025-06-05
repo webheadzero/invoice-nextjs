@@ -7,18 +7,22 @@ import { usePDF } from 'react-to-pdf';
 import '@/app/print.css';
 import { formatCurrency } from '@/lib/utils';
 
+interface InvoiceItem {
+  id?: number;
+  invoiceId: number;
+  description: string;
+  quantity: number;
+  rate: number;
+  amount: number;
+}
+
 interface Invoice {
   id?: number;
   number: string;
   date: string;
   dueDate: string;
   clientId: number;
-  items: {
-    description: string;
-    quantity: number;
-    rate: number;
-    amount: number;
-  }[];
+  items: InvoiceItem[];
   total: number;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
   notes?: string;
@@ -156,7 +160,7 @@ export default function InvoicePage({ params }: { params: { id: string } }) {
         description: item.description,
         quantity: item.quantity,
         rate: item.rate,
-        amount: item.amount
+        amount: item.quantity * item.rate // Recalculate amount
       })),
       subtotal: invoice.subtotal,
       discount: invoice.discount,

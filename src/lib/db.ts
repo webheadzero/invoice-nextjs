@@ -33,11 +33,11 @@ interface Invoice {
   dueDate: string;
   clientId: number;
   items: InvoiceItem[];
-  subtotal: number;
-  discount: number;
   total: number;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
   notes?: string;
+  subtotal: number;
+  discount: number;
 }
 
 interface InvoiceDB extends DBSchema {

@@ -28,23 +28,27 @@ interface Settings {
   currency: string;
 }
 
+interface InvoiceItem {
+  id?: number;
+  invoiceId: number;
+  description: string;
+  quantity: number;
+  rate: number;
+  amount: number;
+}
+
 interface Invoice {
   id?: number;
   number: string;
   date: string;
   dueDate: string;
   clientId: number;
-  items: {
-    description: string;
-    quantity: number;
-    rate: number;
-    amount: number;
-  }[];
-  subtotal: number;
-  discount: number;
+  items: InvoiceItem[];
   total: number;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
   notes?: string;
+  subtotal: number;
+  discount: number;
 }
 
 export default function NewInvoicePage() {
@@ -56,7 +60,7 @@ export default function NewInvoicePage() {
     date: new Date().toISOString().split('T')[0],
     dueDate: new Date().toISOString().split('T')[0],
     clientId: 0,
-    items: [{ description: '', quantity: 1, rate: 0, amount: 0 }],
+    items: [{ description: '', quantity: 1, rate: 0, amount: 0, invoiceId: 0 }],
     subtotal: 0,
     discount: 0,
     total: 0,
@@ -129,14 +133,24 @@ export default function NewInvoicePage() {
     if (duplicateData) {
       const data = JSON.parse(duplicateData);
       
+      // Recalculate amounts for each item
+      const items = data.items.map((item: any) => ({
+        ...item,
+        amount: item.quantity * item.rate
+      }));
+
+      // Calculate new subtotal and total
+      const subtotal = items.reduce((sum: number, item: any) => sum + item.amount, 0);
+      const total = subtotal - data.discount;
+      
       // Set form data with duplicate data
       setFormData(prev => ({
         ...prev,
         clientId: data.clientId,
-        items: data.items,
-        subtotal: data.subtotal,
+        items: items,
+        subtotal: subtotal,
         discount: data.discount,
-        total: data.total,
+        total: total,
         notes: data.notes,
         date: data.date,
         dueDate: data.dueDate
@@ -165,7 +179,8 @@ export default function NewInvoicePage() {
       [field]: value,
       amount: field === 'quantity' || field === 'rate'
         ? Number(newItems[index].quantity) * Number(newItems[index].rate)
-        : newItems[index].amount
+        : newItems[index].amount,
+      invoiceId: newItems[index].invoiceId
     };
 
     const subtotal = newItems.reduce((sum, item) => sum + item.amount, 0);
@@ -182,7 +197,7 @@ export default function NewInvoicePage() {
   const addItem = () => {
     setFormData(prev => ({
       ...prev,
-      items: [...prev.items, { description: '', quantity: 1, rate: 0, amount: 0 }]
+      items: [...prev.items, { description: '', quantity: 1, rate: 0, amount: 0, invoiceId: 0 }]
     }));
   };
 

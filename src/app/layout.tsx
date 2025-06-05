@@ -2,7 +2,6 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 import DarkModeToggle from './components/DarkModeToggle';
-import InstallPWA from './components/InstallPWA';
 import type { Metadata } from 'next';
 import PWAInstallCard from './components/PWAInstallCard';
 

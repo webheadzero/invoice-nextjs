@@ -13,18 +13,22 @@ interface Client {
   address: string;
 }
 
+interface InvoiceItem {
+  id?: number;
+  invoiceId: number;
+  description: string;
+  quantity: number;
+  rate: number;
+  amount: number;
+}
+
 interface Invoice {
   id?: number;
   number: string;
   date: string;
   dueDate: string;
   clientId: number;
-  items: {
-    description: string;
-    quantity: number;
-    rate: number;
-    amount: number;
-  }[];
+  items: InvoiceItem[];
   total: number;
   status: 'draft' | 'sent' | 'paid' | 'overdue';
   notes?: string;
@@ -45,7 +49,7 @@ export default function EditInvoicePage({ params }: { params: { id: string } }) 
     date: new Date().toISOString().split('T')[0],
     dueDate: new Date().toISOString().split('T')[0],
     clientId: 0,
-    items: [{ description: '', quantity: 1, rate: 0, amount: 0 }],
+    items: [{ description: '', quantity: 1, rate: 0, amount: 0, invoiceId: 0 }],
     total: 0,
     status: 'draft' as const,
     subtotal: 0,
@@ -143,7 +147,7 @@ export default function EditInvoicePage({ params }: { params: { id: string } }) 
   const addItem = () => {
     setFormData(prev => ({
       ...prev,
-      items: [...prev.items, { description: '', quantity: 1, rate: 0, amount: 0 }],
+      items: [...prev.items, { description: '', quantity: 1, rate: 0, amount: 0, invoiceId: 0 }],
     }));
   };
 
