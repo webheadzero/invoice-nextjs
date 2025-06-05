@@ -326,7 +326,7 @@ export default function NewInvoicePage() {
               </label>
               <div className="space-y-4">
                 {formData.items.map((item, index) => (
-                  <div key={index} className="flex flex-col space-y-4 md:space-y-0 md:space-x-4">
+                  <div key={index} className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
                     <div className="flex-1">
                       <input
                         type="text"

@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 
 export default function BackupPage() {
   const [isRestoring, setIsRestoring] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
 
   const handleBackup = async () => {
     try {
@@ -52,6 +53,22 @@ export default function BackupPage() {
     }
   };
 
+  const handleClearDatabase = async () => {
+    if (window.confirm('Are you sure you want to clear all data? This action cannot be undone.')) {
+      try {
+        setIsClearing(true);
+        await db.clearDatabase();
+        alert('All data has been cleared successfully!');
+        window.location.href = '/';
+      } catch (error) {
+        console.error('Error clearing database:', error);
+        alert('Error clearing database. Please try again.');
+      } finally {
+        setIsClearing(false);
+      }
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto">
       <div className="md:flex md:items-center md:justify-between mb-6">
@@ -94,6 +111,21 @@ export default function BackupPage() {
                   disabled={isRestoring}
                 />
               </label>
+            </div>
+
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Clear Database</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                Clear all data from the database. This will remove all clients, invoices, and settings. This action cannot be undone.
+              </p>
+              <button
+                type="button"
+                onClick={handleClearDatabase}
+                disabled={isClearing}
+                className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isClearing ? 'Clearing...' : 'Clear Database'}
+              </button>
             </div>
           </div>
         </div>

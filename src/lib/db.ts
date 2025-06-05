@@ -1,4 +1,4 @@
-import { openDB, DBSchema, IDBPDatabase } from 'idb';
+import { openDB, DBSchema, IDBPDatabase, deleteDB } from 'idb';
 
 interface BankAccount {
   bankName: string;
@@ -102,16 +102,12 @@ class DatabaseService {
             // Initialize default settings
             const defaultSettings: SettingsRecord = {
               key: 'company',
-              companyName: 'My Company',
-              email: 'contact@mycompany.com',
-              companyAddress: '123 Business St, City',
-              companyPhone: '+1234567890',
-              companyWebsite: 'www.mycompany.com',
-              bankAccounts: [{
-                bankName: 'Bank Name',
-                accountNumber: '1234567890',
-                accountHolder: 'My Company'
-              }],
+              companyName: '',
+              email: '',
+              companyAddress: '',
+              companyPhone: '',
+              companyWebsite: '',
+              bankAccounts: [],
               currency: 'Rp'
             };
             settingsStore.add(defaultSettings);
@@ -120,7 +116,7 @@ class DatabaseService {
       });
 
       // Initialize with sample data if empty
-      await this.initializeSampleData();
+      // await this.initializeSampleData();
     }
     return this.db;
   }
@@ -136,22 +132,7 @@ class DatabaseService {
 
     if (clients.length === 0) {
       console.log('Adding sample clients...');
-      const sampleClients = [
-        {
-          name: 'John Doe',
-          company: 'Acme Corp',
-          email: 'john@acmecorp.com',
-          phone: '+1234567890',
-          address: '123 Business St, City'
-        },
-        {
-          name: 'Jane Smith',
-          company: 'Tech Solutions',
-          email: 'jane@techsolutions.com',
-          phone: '+0987654321',
-          address: '456 Tech Ave, Town'
-        }
-      ];
+      const sampleClients: Omit<InvoiceDB['clients']['value'], 'id'>[] = [];
 
       for (const client of sampleClients) {
         await db.add('clients', client);
@@ -160,44 +141,7 @@ class DatabaseService {
 
     if (invoices.length === 0) {
       console.log('Adding sample invoices...');
-      const sampleInvoices = [
-        {
-          number: 'INV-202403-001',
-          date: '2024-03-01',
-          dueDate: '2024-03-15',
-          clientId: 1,
-          items: [
-            {
-              description: 'Web Development',
-              quantity: 1,
-              rate: 1000000,
-              amount: 1000000
-            }
-          ],
-          subtotal: 1000000,
-          discount: 0,
-          total: 1000000,
-          status: 'paid' as const
-        },
-        {
-          number: 'INV-202403-002',
-          date: '2024-03-05',
-          dueDate: '2024-03-20',
-          clientId: 2,
-          items: [
-            {
-              description: 'Mobile App Development',
-              quantity: 1,
-              rate: 2000000,
-              amount: 2000000
-            }
-          ],
-          subtotal: 2000000,
-          discount: 0,
-          total: 2000000,
-          status: 'sent' as const
-        }
-      ];
+      const sampleInvoices: Omit<InvoiceDB['invoices']['value'], 'id'>[] = [];
 
       for (const invoice of sampleInvoices) {
         await db.add('invoices', invoice);
@@ -208,23 +152,12 @@ class DatabaseService {
       console.log('Adding sample settings...');
       const defaultSettings: SettingsRecord = {
         key: 'company',
-        companyName: 'My Company',
-        email: 'contact@mycompany.com',
-        companyAddress: '123 Business St, City',
-        companyPhone: '+1234567890',
-        companyWebsite: 'www.mycompany.com',
-        bankAccounts: [
-          {
-            bankName: 'Bank Central Asia',
-            accountNumber: '1234567890',
-            accountHolder: 'My Company'
-          },
-          {
-            bankName: 'Bank Mandiri',
-            accountNumber: '0987654321',
-            accountHolder: 'My Company'
-          }
-        ],
+        companyName: '',
+        email: '',
+        companyAddress: '',
+        companyPhone: '',
+        companyWebsite: '',
+        bankAccounts: [],
         currency: 'Rp'
       };
       await db.add('settings', defaultSettings);
@@ -386,6 +319,50 @@ class DatabaseService {
         ...backup.settings
       };
       await db.put('settings', updatedSettings);
+    }
+  }
+
+  // Clear database and cache
+  async clearDatabase() {
+    try {
+      // Close the current database connection
+      if (this.db) {
+        await this.db.close();
+        this.db = null;
+      }
+
+      // Delete the database
+      await deleteDB('invoice-app', {
+        blocked() {
+          console.log('Database deletion blocked');
+        }
+      });
+
+      // Clear IndexedDB cache
+      if ('caches' in window) {
+        try {
+          const cacheNames = await caches.keys();
+          await Promise.all(
+            cacheNames.map(cacheName => caches.delete(cacheName))
+          );
+        } catch (error) {
+          console.error('Error clearing cache:', error);
+        }
+      }
+
+      // Clear localStorage
+      localStorage.clear();
+
+      // Clear sessionStorage
+      sessionStorage.clear();
+
+      // Reinitialize the database
+      await this.init();
+
+      return true;
+    } catch (error) {
+      console.error('Error clearing database:', error);
+      throw error;
     }
   }
 }
