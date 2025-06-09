@@ -183,6 +183,11 @@ export default function NewInvoicePage() {
       invoiceId: newItems[index].invoiceId
     };
 
+    // Recalculate amount if rate or quantity changed
+    if (field === 'quantity' || field === 'rate') {
+      newItems[index].amount = Number(newItems[index].quantity) * Number(newItems[index].rate);
+    }
+
     const subtotal = newItems.reduce((sum, item) => sum + item.amount, 0);
     const total = subtotal - formData.discount;
 
