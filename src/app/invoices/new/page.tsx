@@ -353,46 +353,58 @@ export default function NewInvoicePage() {
               {formData.items.map((item, index) => (
                 <div key={index} className="grid grid-cols-12 gap-4 items-start">
                   <div className="col-span-5">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Description
+                    </label>  
                     <input
                       type="text"
                       value={item.description}
                       onChange={(e) => handleItemChange(index, 'description', e.target.value)}
                       placeholder="Description"
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
                       required
                     />
                   </div>
                   <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Qty
+                    </label>  
                     <input
                       type="number"
                       value={item.quantity}
                       onChange={(e) => handleItemChange(index, 'quantity', Number(e.target.value))}
                       placeholder="Qty"
                       min="1"
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
                       required
                     />
                   </div>
                   <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Price
+                    </label>  
                     <input
                       type="number"
                       value={item.rate}
                       onChange={(e) => handleItemChange(index, 'rate', Number(e.target.value))}
                       placeholder="Rate"
                       min="0"
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
                       required
                     />
                   </div>
                   <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Total
+                    </label>  
                     <input
                       type="number"
                       value={item.amount}
                       readOnly
-                      className="block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                      className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
                     />
                   </div>
-                  <div className="col-span-1">
+                  <div className="col-span-1 self-end">
                     <button
                       type="button"
                       onClick={() => removeItem(index)}

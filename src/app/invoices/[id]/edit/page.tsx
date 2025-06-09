@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { db } from '@/lib/db';
+import { TrashIcon } from '@heroicons/react/24/outline';
 
 interface Client {
   id?: number;
@@ -166,6 +167,15 @@ export default function EditInvoicePage({ params }: { params: { id: string } }) 
     });
   };
 
+  const handleDiscountChange = (value: number) => {
+    const total = formData.subtotal - value;
+    setFormData(prev => ({
+      ...prev,
+      discount: value,
+      total
+    }));
+  };
+
   const formatCurrency = (amount: number) => {
     if (!settings) return amount.toString();
     
@@ -275,99 +285,140 @@ export default function EditInvoicePage({ params }: { params: { id: string } }) 
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Items
-              </label>
-              <div className="space-y-4">
-                {formData.items.map((item, index) => (
-                  <div key={index} className="flex space-x-4">
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        placeholder="Description"
-                        required
-                        value={item.description}
-                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                        className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                      />
-                    </div>
-                    <div className="w-32">
-                      <input
-                        type="number"
-                        placeholder="Quantity"
-                        required
-                        min="1"
-                        value={item.quantity}
-                        onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value))}
-                        className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                      />
-                    </div>
-                    <div className="w-32">
-                      <input
-                        type="number"
-                        placeholder="Rate"
-                        required
-                        min="0"
-                        step="0.01"
-                        value={item.rate}
-                        onChange={(e) => handleItemChange(index, 'rate', parseFloat(e.target.value))}
-                        className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeItem(index)}
-                      className="inline-flex items-center p-2 border border-transparent rounded-full shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 dark:focus:ring-offset-gray-900"
-                    >
-                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={addItem}
-                  className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-900"
-                >
-                  Add Item
-                </button>
-              </div>
-            </div>
-
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm text-gray-500 dark:text-gray-400">Subtotal:</span>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  {formatCurrency(formData.subtotal)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center space-x-2">
-                  <label htmlFor="discount" className="text-sm text-gray-500 dark:text-gray-400">
-                    Discount:
-                  </label>
-                  <input
-                    type="number"
-                    name="discount"
-                    id="discount"
-                    min="0"
-                    step="0.01"
-                    value={formData.discount}
-                    onChange={handleChange}
-                    className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-32 sm:text-sm border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white"
-                  />
+            <div className="space-y-6">
+              {/* Invoice Items */}
+              <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white">Invoice Items</h3>
+                  <button
+                    type="button"
+                    onClick={addItem}
+                    className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Add Item
+                  </button>
                 </div>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  {formatCurrency(formData.discount)}
-                </span>
+                <div className="space-y-4">
+                  {formData.items.map((item, index) => (
+                    <div key={index} className="grid grid-cols-12 gap-4 items-start">
+                      <div className="col-span-5">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Description
+                        </label>
+                        <input
+                          type="text"
+                          value={item.description}
+                          onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                          placeholder="Description"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                          required
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Qty
+                        </label>
+                        <input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => handleItemChange(index, 'quantity', parseInt(e.target.value))}
+                          placeholder="Qty"
+                          min="1"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                          required
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Price
+                        </label>
+                        <input
+                          type="number"
+                          value={item.rate}
+                          onChange={(e) => handleItemChange(index, 'rate', parseFloat(e.target.value))}
+                          placeholder="Rate"
+                          min="0"
+                          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                          required
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                          Total
+                        </label>
+                        <input
+                          type="number"
+                          value={item.amount}
+                          readOnly
+                          className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                        />
+                      </div>
+                      <div className="col-span-1 self-end">
+                        <button
+                          type="button"
+                          onClick={() => removeItem(index)}
+                          className="inline-flex items-center p-2 border border-transparent rounded-full shadow-sm text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                        >
+                          <TrashIcon className="h-5 w-5" aria-hidden="true" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="flex justify-between items-center pt-4 border-t border-gray-200 dark:border-gray-700">
-                <span className="text-lg font-medium text-gray-900 dark:text-white">Total:</span>
-                <span className="text-lg font-medium text-gray-900 dark:text-white">
-                  {formatCurrency(formData.total)}
-                </span>
+
+              {/* Totals */}
+              <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Subtotal
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.subtotal}
+                      readOnly
+                      className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Discount
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.discount}
+                      onChange={(e) => handleDiscountChange(parseFloat(e.target.value))}
+                      min="0"
+                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Total
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.total}
+                      readOnly
+                      className="mt-1 block w-full rounded-md border-gray-300 bg-gray-50 shadow-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Notes
+                </label>
+                <textarea
+                  value={formData.notes || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  rows={3}
+                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                  placeholder="Add any additional notes here..."
+                />
               </div>
             </div>
 
