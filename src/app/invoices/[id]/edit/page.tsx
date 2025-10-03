@@ -337,7 +337,6 @@ export default function EditInvoicePage({ params }: { params: { id: string } }) 
                           value={item.rate}
                           onChange={(e) => handleItemChange(index, 'rate', parseFloat(e.target.value))}
                           placeholder="Rate"
-                          min="0"
                           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
                           required
                         />
